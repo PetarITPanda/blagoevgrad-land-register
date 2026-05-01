@@ -151,6 +151,15 @@
     letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
     flex: 1;
   }
+  .sort-select {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 4px 22px 4px 8px; outline: none; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7a9e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 6px center; background-color: var(--bg);
+    flex-shrink: 0;
+  }
+  .sort-select:focus { border-color: var(--accent); }
   .load-status {
     display: flex; align-items: center; gap: 8px;
     padding: 0 16px 8px; flex-shrink: 0;
@@ -393,7 +402,16 @@
 
 <!-- ── DESKTOP SIDEBAR ── -->
 <div class="sidebar" style="display:none">
-  <div class="sidebar-header" id="sidebarHeader">Зареждане…</div>
+  <div class="sidebar-header" style="display:flex;align-items:center;gap:8px">
+    <span id="sidebarHeader" style="flex:1">Зареждане…</span>
+    <select class="sort-select" id="sortSelectDesktop">
+      <option value="default">Ред</option>
+      <option value="eur-asc">€ ↑</option>
+      <option value="eur-desc">€ ↓</option>
+      <option value="area-asc">м² ↑</option>
+      <option value="area-desc">м² ↓</option>
+    </select>
+  </div>
   <div class="load-status" id="loadStatusDesktop">
     <span class="load-text" id="loadTextDesktop">0 / 135</span>
     <div class="load-bar"><div class="load-fill" id="loadFillDesktop"></div></div>
@@ -406,7 +424,14 @@
   <div class="drawer-handle-bar" id="drawerHandle"></div>
   <div class="drawer-top" id="drawerTop">
     <span class="drawer-title" id="drawerTitle">Зареждане…</span>
-    <div class="load-status" id="loadStatusMobile" style="padding:0; flex:1; max-width:160px">
+    <select class="sort-select" id="sortSelectMobile">
+      <option value="default">Ред</option>
+      <option value="eur-asc">€ ↑</option>
+      <option value="eur-desc">€ ↓</option>
+      <option value="area-asc">м² ↑</option>
+      <option value="area-desc">м² ↓</option>
+    </select>
+    <div class="load-status" id="loadStatusMobile" style="padding:0; flex:1; max-width:120px">
       <span class="load-text" id="loadTextMobile">0/135</span>
       <div class="load-bar"><div class="load-fill" id="loadFillMobile"></div></div>
     </div>
@@ -580,6 +605,7 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/Worl
 const layerMap = {};
 let activeId = null;
 let filteredIds = new Set(parcels.map(p => p.id));
+let sortKey = 'default'; // default | eur-asc | eur-desc | area-asc | area-desc
 
 // ── BOTTOM DRAWER ──
 const drawer = document.getElementById('drawer');
@@ -687,10 +713,19 @@ function updateStats() {
 }
 
 // ── BUILD LIST ──
+function sortedVisible() {
+  const visible = parcels.filter(p => filteredIds.has(p.id));
+  if (sortKey === 'eur-asc')  return visible.sort((a,b) => a.eur - b.eur);
+  if (sortKey === 'eur-desc') return visible.sort((a,b) => b.eur - a.eur);
+  if (sortKey === 'area-asc') return visible.sort((a,b) => a.area - b.area);
+  if (sortKey === 'area-desc')return visible.sort((a,b) => b.area - a.area);
+  return visible;
+}
+
 function buildList(listEl, titleEl) {
   if (!listEl) return;
   listEl.innerHTML = '';
-  const visible = parcels.filter(p => filteredIds.has(p.id));
+  const visible = sortedVisible();
   visible.forEach(p => {
     const item = document.createElement('div');
     item.className = 'parcel-item' + (layerMap[p.id] ? '' : ' no-geom');
@@ -890,6 +925,21 @@ syncFilters('muncFilter',      ['muncFilterMobile']);
 syncFilters('muncFilterMobile',['muncFilter']);
 syncFilters('priceFilter',     ['priceFilterMobile']);
 syncFilters('priceFilterMobile',['priceFilter']);
+
+// ── SORT ──
+['sortSelectDesktop','sortSelectMobile'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('change', () => {
+    sortKey = el.value;
+    // sync the other select
+    ['sortSelectDesktop','sortSelectMobile'].forEach(other => {
+      const o = document.getElementById(other);
+      if (o && o !== el) o.value = sortKey;
+    });
+    buildSidebar();
+  });
+});
 
 // ── USER INFO ──
 fetch('/.auth/me').then(r => r.json()).then(data => {
