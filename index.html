@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Общински имоти — Благоевград 2026</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2333;
+    --border: #2a3048;
+    --accent: #e8b84b;
+    --accent2: #5b8cff;
+    --text: #dde3f0;
+    --muted: #6b7a9e;
+    --green: #3ecf8e;
+    --red: #f87171;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px 10px;
+    flex-shrink: 0;
+    backdrop-filter: blur(14px);
+    background: rgba(15,17,23,0.96);
+    z-index: 1000;
+  }
+  .header-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 19px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+  .subtitle { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .badge {
+    background: var(--accent);
+    color: #0f1117;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 300px; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 7px 10px 7px 32px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 7px 26px 7px 9px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a9e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 7px center;
+    background-color: var(--surface);
+  }
+  select:focus { border-color: var(--accent); }
+
+  .stat-pills { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .pill span { color: var(--text); font-family: 'DM Mono', monospace; }
+
+  /* ── LAYOUT ── */
+  .body-wrap {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── MAP ── */
+  #map {
+    flex: 1;
+    background: #0d1219;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .parcel-list {
+    overflow-y: auto;
+    flex: 1;
+  }
+  .parcel-list::-webkit-scrollbar { width: 4px; }
+  .parcel-list::-webkit-scrollbar-track { background: var(--surface); }
+  .parcel-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .parcel-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .parcel-item:hover { background: var(--surface2); }
+  .parcel-item.active { background: rgba(232,184,75,0.08); border-left: 3px solid var(--accent); padding-left: 13px; }
+  .parcel-item.no-geom { opacity: 0.5; }
+
+  .pi-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .pi-info { min-width: 0; flex: 1; }
+  .pi-id {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pi-loc {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .pi-price {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--green);
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .pi-area {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* loading overlay on sidebar */
+  .load-status {
+    padding: 8px 16px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .load-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .load-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+
+  /* ── LEGEND ── */
+  .legend {
+    position: absolute;
+    bottom: 28px;
+    left: 12px;
+    z-index: 800;
+    background: rgba(24,28,39,0.94);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    backdrop-filter: blur(8px);
+    min-width: 160px;
+  }
+  .legend-title {
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--text); }
+  .legend-swatch { width: 14px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── POPUP ── */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+    padding: 0 !important;
+  }
+  .leaflet-popup-tip { background: var(--surface2) !important; }
+  .leaflet-popup-content { margin: 0 !important; min-width: 220px; }
+  .popup-inner { padding: 14px 16px; }
+  .popup-id {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    margin-bottom: 8px;
+  }
+  .popup-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+    gap: 12px;
+  }
+  .popup-label { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .popup-val { font-size: 12px; color: var(--text); text-align: right; font-family: 'DM Mono', monospace; }
+  .popup-price { font-size: 16px; color: var(--green); font-family: 'DM Mono', monospace; font-weight: 500; margin: 10px 0 4px; }
+  .popup-bgn { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .popup-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+  .popup-kais {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(232,184,75,0.1);
+    border: 1px solid rgba(232,184,75,0.3);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 5px 10px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-top: 6px;
+  }
+  .popup-kais:hover { background: rgba(232,184,75,0.22); }
+  .type-badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(91,140,255,0.12);
+    color: #8ab4ff;
+    border: 1px solid rgba(91,140,255,0.2);
+  }
+  .cat-badge {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 2px 6px;
+    color: var(--muted);
+  }
+
+  /* Leaflet dark overrides */
+  .leaflet-control-zoom a {
+    background: var(--surface2) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+  }
+  .leaflet-control-zoom a:hover { background: var(--surface) !important; color: var(--accent) !important; }
+  .leaflet-control-attribution { background: rgba(15,17,23,0.7) !important; color: var(--muted) !important; font-size: 10px !important; }
+  .leaflet-control-attribution a { color: var(--muted) !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>Общински поземлени имоти · Благоевград</h1>
+      <div class="subtitle">Публичен търг 2026 — Изх. № 60-00-175 / 17.04.2026 г.</div>
+    </div>
+    <div class="badge" id="countBadge">135 имота</div>
+    <div class="stat-pills">
+      <div class="pill">Общо: <span id="totalEur">—</span> €</div>
+      <div class="pill">Средна цена/дка: <span id="avgSqm">—</span> €</div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="search" placeholder="Търси по ID, местност, вид…">
+    </div>
+    <select id="typeFilter">
+      <option value="">Всички видове</option>
+      <option value="нива">Нива</option>
+      <option value="лозе">Лозе</option>
+      <option value="овощна">Овощна градина</option>
+      <option value="изоставена">Изоставена нива</option>
+      <option value="друг">Друг вид</option>
+    </select>
+    <select id="muncFilter">
+      <option value="">Всички общини</option>
+    </select>
+    <select id="priceFilter">
+      <option value="">Всички цени</option>
+      <option value="0-5000">До € 5 000</option>
+      <option value="5000-20000">€ 5 000 – 20 000</option>
+      <option value="20000-50000">€ 20 000 – 50 000</option>
+      <option value="50000-">Над € 50 000</option>
+    </select>
+  </div>
+</header>
+
+<div class="body-wrap">
+  <div id="map">
+    <div class="legend" id="legend">
+      <div class="legend-title">Начална цена</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#3ecf8e"></div>До € 5 000</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#5b8cff"></div>€ 5 000 – 20 000</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#e8b84b"></div>€ 20 000 – 50 000</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#f87171"></div>Над € 50 000</div>
+      <div class="legend-item" style="margin-top:6px; opacity:0.5"><div class="legend-swatch" style="background:#6b7a9e"></div>Без геометрия</div>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="sidebar-header" id="sidebarHeader">Зареждане на геометрии…</div>
+    <div class="load-status" id="loadStatus">
+      <span id="loadText">0 / 135</span>
+      <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+    </div>
+    <div class="parcel-list" id="parcelList"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── DATA ──
+const parcels = [
+  {id:"04279.2.37",  loc:"гр. Благоевград", local:"Баларбаши-15-1", type:"лозе",          area:502,  cat:7, eur:3470,   bgn:6786.73},
+  {id:"04279.36.117",loc:"гр. Благоевград", local:"Река Бистрица-Ш.107", type:"нива",     area:706,  cat:5, eur:6220,   bgn:12165.26},
+  {id:"04279.36.119",loc:"гр. Благоевград", local:"Под черквата",   type:"друг вид земеделска земя", area:1719, cat:4, eur:16920, bgn:33092.64},
+  {id:"04279.58.44", loc:"гр. Благоевград", local:"Баларбаши",      type:"нива",          area:1845, cat:9, eur:21800,  bgn:42637.09},
+  {id:"04279.75.39", loc:"гр. Благоевград", local:"Баларбаши-БЛ.3", type:"нива",          area:709,  cat:9, eur:7450,   bgn:14570.93},
+  {id:"04279.75.40", loc:"гр. Благоевград", local:"Баларбаши-БЛ.3", type:"нива",          area:1000, cat:9, eur:10500,  bgn:20536.22},
+  {id:"04279.75.49", loc:"гр. Благоевград", local:"Баларбаши-бл.3", type:"нива",          area:1244, cat:9, eur:26130,  bgn:51105.84},
+  {id:"04279.78.13", loc:"гр. Благоевград", local:"Струма",         type:"нива",          area:1500, cat:5, eur:7750,   bgn:15157.68},
+  {id:"04279.78.14", loc:"гр. Благоевград", local:"Струма",         type:"нива",          area:1206, cat:5, eur:6360,   bgn:12439.08},
+  {id:"04279.78.17", loc:"гр. Благоевград", local:"Струма",         type:"нива",          area:782,  cat:5, eur:4120,   bgn:8058.02},
+  {id:"04279.98.12", loc:"гр. Благоевград", local:"Велийца",        type:"нива",          area:687,  cat:5, eur:4375,   bgn:8556.76},
+  {id:"04279.98.16", loc:"гр. Благоевград", local:"Велийца",        type:"нива",          area:2991, cat:4, eur:15495,  bgn:30305.59},
+  {id:"04279.98.31", loc:"гр. Благоевград", local:"Велийца",        type:"нива",          area:1494, cat:4, eur:8430,   bgn:16487.65},
+  {id:"04279.137.16",loc:"гр. Благоевград", local:"Баларбаши-БЛ.2В",type:"нива",         area:292,  cat:9, eur:1830,   bgn:3579.17},
+  {id:"04279.137.23",loc:"гр. Благоевград", local:"Баларбаши",      type:"нива",          area:127,  cat:9, eur:800,    bgn:1564.66},
+  {id:"04279.139.3", loc:"гр. Благоевград", local:"Под черквата",   type:"нива",          area:750,  cat:4, eur:5600,   bgn:10952.65},
+  {id:"04279.140.39",loc:"гр. Благоевград", local:"Под черквата",   type:"нива",          area:889,  cat:4, eur:12260,  bgn:23978.48},
+  {id:"04279.141.1", loc:"гр. Благоевград", local:"Паплъо",         type:"нива",          area:1006, cat:4, eur:22130,  bgn:43282.52},
+  {id:"04279.148.4", loc:"гр. Благоевград", local:"Мутишица",       type:"нива",          area:992,  cat:7, eur:5375,   bgn:10512.59},
+  {id:"04279.148.21",loc:"гр. Благоевград", local:"Мутишица",       type:"нива",          area:1298, cat:7, eur:7565,   bgn:14795.85},
+  {id:"04279.57.17", loc:"гр. Благоевград", local:"Авганцов чифлик Ш.72",type:"нива",    area:3197, cat:6, eur:55450,  bgn:108450.77},
+  {id:"03664.8.52",  loc:"с. Бело поле",    local:"Валога",          type:"нива",          area:1595, cat:6, eur:2957,   bgn:5783.39},
+  {id:"03664.9.54",  loc:"с. Бело поле",    local:"Над къщи",        type:"нива",          area:699,  cat:6, eur:1138,   bgn:2225.73},
+  {id:"03664.9.201", loc:"с. Бело поле",    local:"Под линията",     type:"нива",          area:621,  cat:10,eur:2000,   bgn:3911.66},
+  {id:"03664.21.5",  loc:"с. Бело поле",    local:"Полето",          type:"нива",          area:501,  cat:4, eur:1080,   bgn:2112.30},
+  {id:"03664.30.6",  loc:"с. Бело поле",    local:"Над гробищата",   type:"нива",          area:1871, cat:6, eur:2484,   bgn:4858.28},
+  {id:"03664.30.31", loc:"с. Бело поле",    local:"Белото поле",     type:"нива",          area:1147, cat:6, eur:2033,   bgn:3976.20},
+  {id:"04217.140.23",loc:"с. Бистрица",     local:"Д.Димирево",      type:"нива",          area:9421, cat:9, eur:7419,   bgn:14510.30},
+  {id:"04217.135.14",loc:"с. Бистрица",     local:"Д.Димирево",      type:"нива",          area:8963, cat:9, eur:7058,   bgn:13804.25},
+  {id:"07377.50.7",  loc:"с. Българчево",   local:"Сугарица",        type:"нива",          area:2014, cat:8, eur:1826,   bgn:3571.35},
+  {id:"24367.36.2",  loc:"с. Дъбрава",      local:"Радина нива",     type:"нива",          area:1524, cat:9, eur:12020,  bgn:23509.08},
+  {id:"24367.116.1", loc:"с. Дъбрава",      local:"Ридо",            type:"нива",          area:700,  cat:9, eur:4690,   bgn:9172.84},
+  {id:"24367.116.3", loc:"с. Дъбрава",      local:"Ридо",            type:"нива",          area:1425, cat:9, eur:9550,   bgn:18678.18},
+  {id:"24367.126.287",loc:"с. Дъбрава",     local:"Равнако",         type:"нива",          area:1280, cat:7, eur:19170,  bgn:37493.26},
+  {id:"24367.110.9", loc:"с. Дъбрава",      local:"Валого",          type:"нива",          area:2071, cat:10,eur:13060,  bgn:25543.14},
+  {id:"24367.113.50",loc:"с. Дъбрава",      local:"Ридина нива",     type:"нива",          area:712,  cat:7, eur:5050,   bgn:9876.94},
+  {id:"24367.114.10",loc:"с. Дъбрава",      local:"Валого",          type:"нива",          area:2220, cat:10,eur:12250,  bgn:23958.92},
+  {id:"24367.114.11",loc:"с. Дъбрава",      local:"Валого",          type:"нива",          area:1508, cat:10,eur:9510,   bgn:18599.94},
+  {id:"24367.115.6", loc:"с. Дъбрава",      local:"Бачийщето",       type:"нива",          area:3731, cat:10,eur:9370,   bgn:18326.13},
+  {id:"24367.126.544",loc:"с. Дъбрава",     local:"Равнако",         type:"нива",          area:527,  cat:7, eur:7890,   bgn:15431.50},
+  {id:"24367.76.17", loc:"с. Дъбрава",      local:"Баларбаши",       type:"нива",          area:216,  cat:7, eur:1530,   bgn:2992.42},
+  {id:"27231.4.20",  loc:"с. Еленово",      local:"Бачийщето",       type:"нива",          area:1005, cat:6, eur:3570,   bgn:6982.31},
+  {id:"27231.3.9",   loc:"с. Еленово",      local:"Арнаудско",       type:"нива",          area:786,  cat:6, eur:6000,   bgn:11734.98},
+  {id:"27231.4.4",   loc:"с. Еленово",      local:"Бачийщето",       type:"нива",          area:1998, cat:6, eur:7420,   bgn:14512.26},
+  {id:"27231.4.8",   loc:"с. Еленово",      local:"Бачийщето",       type:"нива",          area:1502, cat:6, eur:5580,   bgn:10913.53},
+  {id:"27231.4.11",  loc:"с. Еленово",      local:"Бачийщето",       type:"нива",          area:2000, cat:6, eur:7430,   bgn:14531.82},
+  {id:"27231.6.1",   loc:"с. Еленово",      local:"Еминова нива",    type:"нива",          area:680,  cat:6, eur:4750,   bgn:9290.19},
+  {id:"27231.14.1",  loc:"с. Еленово",      local:"Над селото",      type:"нива",          area:599,  cat:9, eur:2125,   bgn:4156.14},
+  {id:"27231.15.1",  loc:"с. Еленово",      local:"Над селото",      type:"нива",          area:2309, cat:9, eur:8190,   bgn:16018.25},
+  {id:"27231.15.3",  loc:"с. Еленово",      local:"Над селото",      type:"нива",          area:1654, cat:9, eur:5690,   bgn:11128.67},
+  {id:"27231.33.3",  loc:"с. Еленово",      local:"Еминова нива",    type:"нива",          area:358,  cat:6, eur:3160,   bgn:6180.42},
+  {id:"27231.35.11", loc:"с. Еленово",      local:"Еленовско дере",  type:"нива",          area:1059, cat:6, eur:5650,   bgn:11050.44},
+  {id:"27231.35.12", loc:"с. Еленово",      local:"Еленовско дере",  type:"нива",          area:829,  cat:6, eur:3670,   bgn:7177.90},
+  {id:"27231.38.4",  loc:"с. Еленово",      local:"Сириковица",      type:"лозе",          area:358,  cat:9, eur:890,    bgn:1740.69},
+  {id:"00134.10.9",  loc:"с. Изгрев",       local:"ЗАЕДНИ НИВИ",     type:"нива",          area:999,  cat:8, eur:1370,   bgn:2679.49},
+  {id:"00134.12.4",  loc:"с. Изгрев",       local:"Иванчова падина", type:"нива",          area:5298, cat:9, eur:20910,  bgn:40896.41},
+  {id:"00134.15.8",  loc:"с. Изгрев",       local:"Саковска нива",   type:"нива",          area:1637, cat:9, eur:6500,   bgn:12712.90},
+  {id:"00134.9.1",   loc:"с. Изгрев",       local:"Чуките",          type:"нива",          area:1121, cat:6, eur:12650,  bgn:24741.25},
+  {id:"00134.9.6",   loc:"с. Изгрев",       local:"Чуките",          type:"нива",          area:250,  cat:6, eur:1575,   bgn:3080.43},
+  {id:"00134.9.12",  loc:"с. Изгрев",       local:"Чуките",          type:"нива",          area:1780, cat:6, eur:8510,   bgn:16644.11},
+  {id:"00134.9.24",  loc:"с. Изгрев",       local:"Чуките",          type:"нива",          area:300,  cat:6, eur:1550,   bgn:3031.54},
+  {id:"62699.9.19",  loc:"с. Рилци",        local:"Диновица",        type:"нива",          area:512,  cat:5, eur:4560,   bgn:8918.58},
+  {id:"62699.9.25",  loc:"с. Рилци",        local:"Диновица",        type:"нива",          area:300,  cat:5, eur:2340,   bgn:4576.64},
+  {id:"62699.9.26",  loc:"с. Рилци",        local:"Диновица",        type:"нива",          area:336,  cat:5, eur:2620,   bgn:5124.27},
+  {id:"62699.9.32",  loc:"с. Рилци",        local:"Диновица",        type:"нива",          area:1173, cat:5, eur:13070,  bgn:25562.70},
+  {id:"62699.9.38",  loc:"с. Рилци",        local:"Диновица",        type:"нива",          area:1757, cat:5, eur:17620,  bgn:34461.72},
+  {id:"62699.14.9",  loc:"с. Рилци",        local:"Диновица",        type:"нива",          area:1004, cat:5, eur:6710,   bgn:13123.62},
+  {id:"62699.16.14", loc:"с. Рилци",        local:"Стремата",        type:"нива",          area:866,  cat:5, eur:8200,   bgn:16037.81},
+  {id:"62699.16.15", loc:"с. Рилци",        local:"Стремата",        type:"нива",          area:1204, cat:5, eur:11400,  bgn:22296.46},
+  {id:"62699.17.1",  loc:"с. Рилци",        local:"Топузица",        type:"нива",          area:895,  cat:5, eur:8980,   bgn:17563.35},
+  {id:"62699.17.6",  loc:"с. Рилци",        local:"Топузица",        type:"нива",          area:611,  cat:5, eur:6130,   bgn:11989.24},
+  {id:"04279.27.6",  loc:"гр. Благоевград", local:"Стара гара",      type:"нива",          area:2853, cat:5, eur:76220,  bgn:149073.36},
+  {id:"04279.28.81", loc:"гр. Благоевград", local:"Карамих бунар-Ш.44",type:"нива",       area:393,  cat:5, eur:8600,   bgn:16820.14},
+  {id:"04279.60.46", loc:"гр. Благоевград", local:"Баларбаши-15-3",  type:"нива",          area:842,  cat:7, eur:21000,  bgn:41072.43},
+  {id:"04279.91.9",  loc:"гр. Благоевград", local:"Рибарниците",     type:"нива",          area:2227, cat:4, eur:11540,  bgn:22570.28},
+  {id:"04279.114.19",loc:"гр. Благоевград", local:"Айдаровско дере", type:"нива",          area:2191, cat:8, eur:13290,  bgn:25992.98},
+  {id:"04279.114.41",loc:"гр. Благоевград", local:"Айдаровско дере", type:"нива",          area:1450, cat:8, eur:7070,   bgn:13827.72},
+  {id:"04279.121.4", loc:"гр. Благоевград", local:"Динов чифлик",    type:"нива",          area:402,  cat:4, eur:7720,   bgn:15099.01},
+  {id:"04279.129.62",loc:"гр. Благоевград", local:"Царевосел шосе-Ш.08",type:"нива",      area:499,  cat:5, eur:12310,  bgn:24076.27},
+  {id:"04279.135.6", loc:"гр. Благоевград", local:"Баларбаши",       type:"лозе",          area:6243, cat:9, eur:81960,  bgn:160299.83},
+  {id:"04279.155.9", loc:"гр. Благоевград", local:"Герено",          type:"нива",          area:2102, cat:5, eur:21970,  bgn:42969.59},
+  {id:"00134.30.1",  loc:"с. Изгрев",       local:"Близникуловец",   type:"нива",          area:1448, cat:9, eur:5710,   bgn:11167.79},
+  {id:"00134.29.4",  loc:"с. Изгрев",       local:"Айдаровско дере", type:"нива",          area:1569, cat:9, eur:9125,   bgn:17846.95},
+  {id:"03664.17.5",  loc:"с. Бело поле",    local:"Ридара",          type:"лозе",          area:1039, cat:4, eur:3421,   bgn:6690.89},
+  {id:"03664.17.11", loc:"с. Бело поле",    local:"Ридара",          type:"лозе",          area:4000, cat:4, eur:11020,  bgn:21553.25},
+  {id:"03664.18.13", loc:"с. Бело поле",    local:"Ридара",          type:"лозе",          area:2748, cat:4, eur:3833,   bgn:7496.70},
+  {id:"07377.71.12", loc:"с. Българчево",   local:"Площта",          type:"нива",          area:2450, cat:8, eur:9046,   bgn:17692.44},
+  {id:"23652.103.2", loc:"с. Дренково",     local:"Мечовци",         type:"нива",          area:973,  cat:9, eur:441,    bgn:862.52},
+  {id:"24367.44.26", loc:"с. Дъбрава",      local:"Юрто",            type:"лозе",          area:581,  cat:7, eur:3210,   bgn:6278.21},
+  {id:"24367.60.5",  loc:"с. Дъбрава",      local:"Мучова чука",     type:"лозе",          area:3004, cat:7, eur:8960,   bgn:17524.24},
+  {id:"24367.64.523",loc:"с. Дъбрава",      local:"Духче баир",      type:"нива",          area:338,  cat:7, eur:4000,   bgn:7823.32},
+  {id:"24367.64.667",loc:"с. Дъбрава",      local:"Кладенецо",       type:"овощна градина",area:1000, cat:5, eur:11830,  bgn:23137.47},
+  {id:"24367.74.15", loc:"с. Дъбрава",      local:"Хармано",         type:"лозе",          area:1999, cat:9, eur:6270,   bgn:12263.05},
+  {id:"24367.122.666",loc:"с. Дъбрава",     local:"Меломедова нива", type:"овощна градина",area:395,  cat:9, eur:870,    bgn:1701.57},
+  {id:"27231.34.110",loc:"с. Еленово",      local:"Еминова нива",    type:"нива",          area:4860, cat:6, eur:24900,  bgn:48700.17},
+  {id:"30702.50.73", loc:"с. Зелендол",     local:"Чекуро",          type:"нива",          area:2820, cat:5, eur:6696,   bgn:13096.24},
+  {id:"30702.78.7",  loc:"с. Зелендол",     local:"Крачаница",       type:"нива",          area:850,  cat:5, eur:4448,   bgn:8699.53},
+  {id:"30702.78.12", loc:"с. Зелендол",     local:"Крачаница",       type:"нива",          area:5980, cat:5, eur:30120,  bgn:58909.60},
+  {id:"43520.31.110",loc:"с. Лешко",        local:"Чепилец",         type:"друг вид нива", area:2605, cat:7, eur:2473,   bgn:4836.77},
+  {id:"47370.13.377",loc:"с. Марулево",     local:"Студената вода",  type:"изоставена нива",area:4018,cat:9, eur:1965,   bgn:3843.21},
+  {id:"53031.10.487",loc:"с. Обел",         local:"Валого",          type:"изоставена нива",area:2614,cat:9, eur:1307,   bgn:2556.27},
+  {id:"57159.9.27",  loc:"с. Покровник",    local:"Лаго",            type:"нива",          area:6502, cat:7, eur:61350,  bgn:119990.17},
+  {id:"62699.90.340",loc:"с. Рилци",        local:"Стремата",        type:"друг вид земеделска земя",area:1584,cat:5,eur:17650,bgn:34520.40},
+  {id:"68792.91.11", loc:"с. Логодаж",      local:"Лъката",          type:"нива",          area:2650, cat:4, eur:7480,   bgn:14629.61},
+  {id:"68792.117.12",loc:"с. Логодаж",      local:"Китката",         type:"нива",          area:2083, cat:8, eur:6561,   bgn:12832.20},
+  {id:"68792.184.2", loc:"с. Логодаж",      local:"Ранна круша",     type:"овощна градина",area:2404, cat:7, eur:10460,  bgn:20457.98},
+  {id:"68792.184.4", loc:"с. Логодаж",      local:"Ранна круша",     type:"овощна градина",area:1161, cat:7, eur:4620,   bgn:9035.93},
+  {id:"68792.184.5", loc:"с. Логодаж",      local:"Ранна круша",     type:"овощна градина",area:698,  cat:7, eur:2070,   bgn:4048.57},
+  {id:"68792.184.7", loc:"с. Логодаж",      local:"Ранна круша",     type:"нива",          area:3207, cat:7, eur:15530,  bgn:30374.04},
+  {id:"68792.218.5", loc:"с. Логодаж",      local:"Язовалийски рид", type:"нива",          area:745,  cat:7, eur:1960,   bgn:3833.43},
+  {id:"68792.219.1", loc:"с. Логодаж",      local:"Ридо",            type:"нива",          area:5932, cat:6, eur:53020,  bgn:103698.11},
+  {id:"68792.245.57",loc:"с. Логодаж",      local:"Медарица",        type:"нива",          area:15000,cat:6, eur:204600, bgn:400162.82},
+  {id:"68792.249.1", loc:"с. Логодаж",      local:"Ридо",            type:"нива",          area:510,  cat:6, eur:5090,   bgn:9955.17},
+  {id:"68792.249.26",loc:"с. Логодаж",      local:"Ридо",            type:"нива",          area:345,  cat:6, eur:4320,   bgn:8449.19},
+  {id:"68792.249.27",loc:"с. Логодаж",      local:"Ридо",            type:"нива",          area:622,  cat:6, eur:5965,   bgn:11666.53},
+  {id:"68792.250.23",loc:"с. Логодаж",      local:"Скорушата",       type:"нива",          area:2524, cat:7, eur:19870,  bgn:38862.34},
+  {id:"66055.11.645",loc:"с. Селище",       local:"Преслапо",        type:"нива",          area:833,  cat:8, eur:585,    bgn:1144.16},
+  {id:"66055.83.18", loc:"с. Селище",       local:"Търлите",         type:"нива",          area:1001, cat:8, eur:1019,   bgn:1992.99},
+  {id:"07168.5.10",  loc:"с. Бучино",       local:"ЗАЕДНИ НИВИ",     type:"нива",          area:999,  cat:8, eur:1370,   bgn:2679.49},
+  {id:"07168.57.263",loc:"с. Бучино",       local:"ПОЛЕТО",          type:"нива",          area:1731, cat:5, eur:1380,   bgn:2699.05},
+  {id:"03664.1.14",  loc:"с. Бело поле",    local:"ЛАКАТА",          type:"нива",          area:500,  cat:6, eur:837,    bgn:1637.03},
+  {id:"03664.1.70",  loc:"с. Бело поле",    local:"ПОД ЛИНИЯТА",     type:"нива",          area:5318, cat:6, eur:8900,   bgn:17406.89},
+  {id:"23652.40.20", loc:"с. Дренково",     local:"РЕКАТА",          type:"нива",          area:122,  cat:4, eur:73,     bgn:142.78},
+  {id:"23652.40.22", loc:"с. Дренково",     local:"РЕКАТА",          type:"нива",          area:168,  cat:4, eur:101,    bgn:197.54},
+  {id:"23652.40.34", loc:"с. Дренково",     local:"РЕКАТА",          type:"нива",          area:194,  cat:4, eur:117,    bgn:228.83},
+  {id:"23652.40.38", loc:"с. Дренково",     local:"РЕКАТА",          type:"нива",          area:213,  cat:4, eur:117,    bgn:228.83},
+  {id:"23652.40.43", loc:"с. Дренково",     local:"РЕКАТА",          type:"нива",          area:439,  cat:4, eur:274,    bgn:535.90},
+  {id:"23652.40.49", loc:"с. Дренково",     local:"РЕКАТА",          type:"нива",          area:1210, cat:4, eur:793,    bgn:1550.97},
+  {id:"23652.40.72", loc:"с. Дренково",     local:"РЕКАТА",          type:"нива",          area:294,  cat:4, eur:145,    bgn:283.60},
+  {id:"23652.40.75", loc:"с. Дренково",     local:"РЕКАТА",          type:"нива",          area:483,  cat:4, eur:301,    bgn:588.70},
+  {id:"43863.1.229", loc:"с. Лисия",        local:"БЕЛИТЕ КАМЪНИ",   type:"изоставена нива",area:8450,cat:9, eur:26618,  bgn:52060.28},
+  {id:"66055.83.7",  loc:"с. Селище",       local:"ТЪРЛИТЕ",         type:"нива",          area:1438, cat:8, eur:3475,   bgn:6796.51},
+  {id:"07168.5.208", loc:"с. Бучино",       local:"УСОЕ",            type:"нива",          area:10731,cat:8, eur:6081,   bgn:11893.40},
+  {id:"30702.9.10",  loc:"с. Зелендол",     local:"ГОРНО ПОЛЕ",      type:"нива",          area:1600, cat:5, eur:4393,   bgn:8591.96},
+  {id:"04279.21.1",  loc:"гр. Благоевград", local:"ПОД ГРАМАДА-Ш.13",type:"нива",         area:1346, cat:5, eur:15620,  bgn:30550.06},
+];
+
+// ── UTILS ──
+function fmt(n) { return n.toLocaleString('bg-BG'); }
+function fmtEur(n) { return '€ ' + fmt(n); }
+function fmtBgn(n) { return fmt(n) + ' лв.'; }
+
+function priceColor(eur) {
+  if (eur < 5000)  return '#3ecf8e';
+  if (eur < 20000) return '#5b8cff';
+  if (eur < 50000) return '#e8b84b';
+  return '#f87171';
+}
+
+// ── MAP INIT ──
+const map = L.map('map', {
+  center: [41.99, 23.10],
+  zoom: 11,
+  zoomControl: true,
+  preferCanvas: false,
+});
+
+// Dark satellite-style tile layer (Esri World Imagery)
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles © Esri | © Cadastre.bg',
+  maxZoom: 19,
+}).addTo(map);
+
+// Subtle label overlay
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+  attribution: '',
+  maxZoom: 19,
+  opacity: 0.6,
+}).addTo(map);
+
+// ── STATE ──
+const geometryCache = {};   // id -> L.Polygon (or null if not found)
+const layerMap = {};        // id -> L.Polygon
+let activeId = null;
+let filteredIds = new Set(parcels.map(p => p.id));
+
+// ── STATS ──
+function updateStats() {
+  const visible = parcels.filter(p => filteredIds.has(p.id));
+  const totalEur = visible.reduce((s,p) => s+p.eur, 0);
+  const totalArea = visible.reduce((s,p) => s+p.area, 0);
+  const avg = totalArea > 0 ? Math.round(totalEur / (totalArea/1000)) : 0;
+  document.getElementById('countBadge').textContent = visible.length + ' имота';
+  document.getElementById('totalEur').textContent = fmt(totalEur);
+  document.getElementById('avgSqm').textContent = avg + ' / дка';
+}
+
+// ── SIDEBAR ──
+function buildSidebar() {
+  const list = document.getElementById('parcelList');
+  list.innerHTML = '';
+  const visible = parcels.filter(p => filteredIds.has(p.id));
+  visible.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'parcel-item' + (layerMap[p.id] ? '' : ' no-geom');
+    item.id = 'item-' + p.id.replace(/\./g, '-');
+    const col = priceColor(p.eur);
+    item.innerHTML = `
+      <div class="pi-dot" style="background:${col}"></div>
+      <div class="pi-info">
+        <div class="pi-id">${p.id}</div>
+        <div class="pi-loc">${p.loc} · ${p.local}</div>
+      </div>
+      <div>
+        <div class="pi-price">${fmtEur(p.eur)}</div>
+        <div class="pi-area">${fmt(p.area)} м²</div>
+      </div>`;
+    item.addEventListener('click', () => selectParcel(p.id, true));
+    list.appendChild(item);
+  });
+
+  document.getElementById('sidebarHeader').textContent =
+    visible.length + ' имота' + (visible.length < parcels.length ? ' (филтрирани)' : '');
+}
+
+// ── POPUP ──
+function makePopup(p) {
+  const pdka = Math.round(p.eur / (p.area / 1000));
+  return `<div class="popup-inner">
+    <div class="popup-id">${p.id}</div>
+    <div class="popup-row">
+      <span class="popup-label">Местност</span>
+      <span class="popup-val">${p.local}</span>
+    </div>
+    <div class="popup-row">
+      <span class="popup-label">Населено място</span>
+      <span class="popup-val">${p.loc}</span>
+    </div>
+    <div class="popup-row">
+      <span class="popup-label">Вид</span>
+      <span class="type-badge">${p.type}</span>
+    </div>
+    <div class="popup-row">
+      <span class="popup-label">Площ</span>
+      <span class="popup-val">${fmt(p.area)} м²</span>
+    </div>
+    <div class="popup-row">
+      <span class="popup-label">Категория</span>
+      <span class="cat-badge">Кат. ${p.cat}</span>
+    </div>
+    <hr class="popup-divider">
+    <div class="popup-price">${fmtEur(p.eur)}</div>
+    <div class="popup-bgn">${fmtBgn(p.bgn)} · ${fmt(pdka)} €/дка</div>
+    <button class="popup-kais" onclick="openKAIS('${p.id}')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Отвори в КАИС
+    </button>
+  </div>`;
+}
+
+window.openKAIS = function(id) {
+  window.open('https://kais.cadastre.bg/bg/Map', '_blank');
+  navigator.clipboard?.writeText(id).catch(()=>{});
+};
+
+// ── SELECT / HIGHLIGHT ──
+function selectParcel(id, flyTo) {
+  // Deselect old
+  if (activeId && layerMap[activeId]) {
+    const p = parcels.find(x => x.id === activeId);
+    layerMap[activeId].setStyle(normalStyle(p));
+    const oldItem = document.getElementById('item-' + activeId.replace(/\./g, '-'));
+    if (oldItem) oldItem.classList.remove('active');
+  }
+  activeId = id;
+
+  const item = document.getElementById('item-' + id.replace(/\./g, '-'));
+  if (item) {
+    item.classList.add('active');
+    item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  const layer = layerMap[id];
+  if (!layer) return;
+
+  const p = parcels.find(x => x.id === id);
+  layer.setStyle({ ...normalStyle(p), weight: 3, opacity: 1, fillOpacity: 0.55 });
+  layer.bringToFront();
+
+  if (flyTo) {
+    map.fitBounds(layer.getBounds(), { maxZoom: 17, padding: [40, 40] });
+  }
+
+  layer.openPopup();
+}
+
+function normalStyle(p) {
+  const col = priceColor(p.eur);
+  return {
+    color: col,
+    weight: 1.5,
+    opacity: 0.85,
+    fillColor: col,
+    fillOpacity: 0.28,
+  };
+}
+
+// ── GEOMETRY FETCH ──
+const INSPIRE_URL = 'https://inspire.cadastre.bg/arcgis/rest/services/Cadastral_Parcel/MapServer/0/query';
+const BATCH_SIZE = 20;
+let loadedCount = 0;
+
+function buildWhereClause(ids) {
+  const quoted = ids.map(id => `'${id}'`).join(',');
+  return `nationalcadastralref IN (${quoted})`;
+}
+
+async function fetchBatch(ids) {
+  const where = buildWhereClause(ids);
+  const params = new URLSearchParams({
+    where,
+    outFields: 'nationalcadastralref',
+    returnGeometry: 'true',
+    outSR: '4326',
+    f: 'geojson',
+  });
+  const res = await fetch(`${INSPIRE_URL}?${params}`);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+function addParcelLayer(p, geojsonFeature) {
+  // GeoJSON rings are [lng, lat]; Leaflet wants [lat, lng]
+  const latlngs = geojsonFeature.geometry.coordinates[0].map(([lng, lat]) => [lat, lng]);
+  const layer = L.polygon(latlngs, normalStyle(p));
+
+  layer.bindPopup(makePopup(p), {
+    maxWidth: 280,
+    className: 'dark-popup',
+  });
+  layer.on('click', () => selectParcel(p.id, false));
+  layer.addTo(map);
+  layerMap[p.id] = layer;
+}
+
+async function loadAllGeometries() {
+  const allIds = parcels.map(p => p.id);
+  const batches = [];
+  for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
+    batches.push(allIds.slice(i, i + BATCH_SIZE));
+  }
+
+  const loadFill = document.getElementById('loadFill');
+  const loadText = document.getElementById('loadText');
+
+  for (const batch of batches) {
+    try {
+      const geojson = await fetchBatch(batch);
+      if (geojson.features) {
+        for (const feat of geojson.features) {
+          const ref = feat.properties?.nationalcadastralref;
+          if (!ref) continue;
+          const p = parcels.find(x => x.id === ref);
+          if (!p) continue;
+          if (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon') {
+            addParcelLayer(p, feat.geometry.type === 'MultiPolygon'
+              ? { geometry: { coordinates: feat.geometry.coordinates[0] } }
+              : feat);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Batch failed:', e);
+    }
+
+    loadedCount += batch.length;
+    const pct = Math.round(loadedCount / allIds.length * 100);
+    loadFill.style.width = pct + '%';
+    loadText.textContent = loadedCount + ' / ' + allIds.length;
+  }
+
+  // Done
+  const geomCount = Object.keys(layerMap).length;
+  document.getElementById('loadStatus').style.display = 'none';
+  document.getElementById('sidebarHeader').textContent =
+    geomCount + ' геометрии заредени · ' + (parcels.length - geomCount) + ' без данни';
+
+  buildSidebar();
+
+  // Fit to all loaded parcels
+  const allLayers = Object.values(layerMap);
+  if (allLayers.length > 0) {
+    const group = L.featureGroup(allLayers);
+    map.fitBounds(group.getBounds(), { padding: [20, 20] });
+  }
+}
+
+// ── FILTERS ──
+const muncs = [...new Set(parcels.map(p => p.loc))].sort();
+const muncSel = document.getElementById('muncFilter');
+muncs.forEach(m => {
+  const o = document.createElement('option');
+  o.value = m; o.textContent = m;
+  muncSel.appendChild(o);
+});
+
+function applyFilters() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const t = document.getElementById('typeFilter').value.toLowerCase();
+  const m = document.getElementById('muncFilter').value;
+  const pr = document.getElementById('priceFilter').value;
+
+  filteredIds = new Set();
+  parcels.forEach(p => {
+    const matchQ = !q || p.id.toLowerCase().includes(q) ||
+      p.loc.toLowerCase().includes(q) || p.local.toLowerCase().includes(q) ||
+      p.type.toLowerCase().includes(q);
+    const matchT = !t || p.type.toLowerCase().includes(t);
+    const matchM = !m || p.loc === m;
+    let matchP = true;
+    if (pr) {
+      const [lo, hi] = pr.split('-').map(Number);
+      matchP = hi ? (p.eur >= lo && p.eur < hi) : (p.eur >= lo);
+    }
+    if (matchQ && matchT && matchM && matchP) filteredIds.add(p.id);
+  });
+
+  // Show/hide map layers
+  parcels.forEach(p => {
+    const layer = layerMap[p.id];
+    if (!layer) return;
+    if (filteredIds.has(p.id)) {
+      if (!map.hasLayer(layer)) layer.addTo(map);
+    } else {
+      if (map.hasLayer(layer)) layer.remove();
+    }
+  });
+
+  updateStats();
+  buildSidebar();
+}
+
+['search', 'typeFilter', 'muncFilter', 'priceFilter'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', applyFilters);
+});
+
+// ── INIT ──
+updateStats();
+buildSidebar();
+loadAllGeometries();
+</script>
+</body>
+</html>
