@@ -2,7 +2,7 @@
 <html lang="bg">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Общински имоти — Благоевград 2026</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
@@ -19,358 +19,313 @@
     --muted: #6b7a9e;
     --green: #3ecf8e;
     --red: #f87171;
+    --header-h: 56px;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; }
 
-  html, body { height: 100%; overflow: hidden; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* ── HEADER ── */
+  /* ─────────────────────────────────────────────────────────────
+     HEADER
+  ───────────────────────────────────────────────────────────── */
   header {
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px 10px;
-    flex-shrink: 0;
-    backdrop-filter: blur(14px);
+    height: var(--header-h);
     background: rgba(15,17,23,0.96);
-    z-index: 1000;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    display: flex; align-items: center; padding: 0 16px; gap: 10px;
   }
-  .header-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-  .user-bar {
-    display: flex; align-items: center; gap: 10px;
-    margin-left: auto; flex-shrink: 0;
-  }
-  .user-name {
-    font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted);
-  }
-  .logout-btn {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-    color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px;
-    padding: 4px 10px; text-decoration: none; transition: color 0.15s, border-color 0.15s;
-    white-space: nowrap;
-  }
-  .logout-btn:hover { color: var(--text); border-color: var(--muted); }
+  .header-row1 { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .header-title { flex: 1; min-width: 0; }
   h1 {
     font-family: 'Playfair Display', serif;
-    font-size: 19px;
-    color: var(--accent);
-    letter-spacing: 0.02em;
-    line-height: 1.2;
+    font-size: 15px; color: var(--accent);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .subtitle { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .subtitle { color: var(--muted); font-size: 10px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .badge {
-    background: var(--accent);
-    color: #0f1117;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    font-weight: 500;
-    padding: 3px 10px;
-    border-radius: 20px;
-    white-space: nowrap;
+    background: var(--accent); color: #0f1117;
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+    padding: 3px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0;
   }
+  .header-btn {
+    width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; transition: color 0.15s, border-color 0.15s;
+  }
+  .header-btn:hover, .header-btn.active { color: var(--accent); border-color: var(--accent); }
+  .user-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 4px 10px 4px 6px; flex-shrink: 0;
+  }
+  .user-avatar {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent);
+    color: #0f1117; font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .user-name-text { font-size: 11px; color: var(--muted); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .logout-link { font-size: 10px; color: var(--muted); text-decoration: none; margin-left: 4px; white-space: nowrap; }
+  .logout-link:hover { color: var(--text); }
 
-  /* ── CONTROLS ── */
-  .controls {
-    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center;
+  /* ─────────────────────────────────────────────────────────────
+     FILTER PANEL (slides down from header on mobile)
+  ───────────────────────────────────────────────────────────── */
+  .filter-panel {
+    position: fixed; top: var(--header-h); left: 0; right: 0; z-index: 900;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 16px 16px;
+    transform: translateY(-110%);
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
   }
-  .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 300px; }
-  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
-  input[type="text"] {
-    width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    padding: 7px 10px 7px 32px;
-    outline: none;
-    transition: border-color 0.2s;
+  .filter-panel.open { transform: translateY(0); }
+  .filter-panel .search-wrap { grid-column: 1 / -1; position: relative; }
+  .filter-panel .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .filter-panel input[type="text"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    padding: 9px 12px 9px 34px; outline: none;
   }
-  input[type="text"]:focus { border-color: var(--accent); }
-  input[type="text"]::placeholder { color: var(--muted); }
-
-  select {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    padding: 7px 26px 7px 9px;
-    outline: none;
-    cursor: pointer;
-    appearance: none;
+  .filter-panel input[type="text"]:focus { border-color: var(--accent); }
+  .filter-panel input[type="text"]::placeholder { color: var(--muted); }
+  .filter-panel select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px;
+    padding: 9px 28px 9px 10px; outline: none; cursor: pointer; appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a9e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 7px center;
-    background-color: var(--surface);
+    background-repeat: no-repeat; background-position: right 8px center; background-color: var(--bg);
   }
-  select:focus { border-color: var(--accent); }
-
-  .stat-pills { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .filter-panel select:focus { border-color: var(--accent); }
+  .stat-row {
+    grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 2px; flex-wrap: wrap;
+  }
   .pill {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 11px;
-    color: var(--muted);
-    white-space: nowrap;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 20px;
+    padding: 4px 12px; font-size: 11px; color: var(--muted); white-space: nowrap;
   }
   .pill span { color: var(--text); font-family: 'DM Mono', monospace; }
 
-  /* ── LAYOUT ── */
-  .body-wrap {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  /* ── MAP ── */
+  /* ─────────────────────────────────────────────────────────────
+     MAP
+  ───────────────────────────────────────────────────────────── */
   #map {
-    flex: 1;
-    background: #0d1219;
+    position: fixed;
+    top: var(--header-h); left: 0; right: 0; bottom: 0;
+    z-index: 1;
   }
 
-  /* ── SIDEBAR ── */
-  .sidebar {
-    width: 320px;
-    flex-shrink: 0;
+  /* ─────────────────────────────────────────────────────────────
+     BOTTOM DRAWER (mobile)
+  ───────────────────────────────────────────────────────────── */
+  .drawer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 500;
     background: var(--surface);
-    border-left: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+    touch-action: none;
+    /* default: peek state */
+    height: calc(100vh - var(--header-h));
+    transform: translateY(calc(100% - 72px));
   }
-  .sidebar-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    font-size: 11px;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    flex-shrink: 0;
+  .drawer.dragging { transition: none; }
+  .drawer-handle-bar {
+    padding: 10px 0 6px; display: flex; justify-content: center; flex-shrink: 0; cursor: grab;
   }
-  .parcel-list {
-    overflow-y: auto;
+  .drawer-handle-bar::before {
+    content: ''; display: block; width: 36px; height: 4px;
+    background: var(--border); border-radius: 2px;
+  }
+  .drawer-top {
+    padding: 0 16px 10px; flex-shrink: 0; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .drawer-title {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
     flex: 1;
   }
-  .parcel-list::-webkit-scrollbar { width: 4px; }
-  .parcel-list::-webkit-scrollbar-track { background: var(--surface); }
+  .load-status {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 16px 8px; flex-shrink: 0;
+  }
+  .load-text { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; white-space: nowrap; }
+  .load-bar { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .load-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; width: 0%; }
+
+  .parcel-list {
+    overflow-y: auto; flex: 1;
+    -webkit-overflow-scrolling: touch;
+  }
+  .parcel-list::-webkit-scrollbar { width: 3px; }
   .parcel-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
   .parcel-item {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.12s;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    cursor: pointer; display: flex; gap: 10px; align-items: flex-start;
+    transition: background 0.12s; min-height: 56px;
   }
-  .parcel-item:hover { background: var(--surface2); }
+  .parcel-item:active { background: var(--surface2); }
   .parcel-item.active { background: rgba(232,184,75,0.08); border-left: 3px solid var(--accent); padding-left: 13px; }
   .parcel-item.no-geom { opacity: 0.5; }
-
-  .pi-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    flex-shrink: 0;
-    margin-top: 4px;
-  }
+  .pi-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; margin-top: 4px; }
   .pi-info { min-width: 0; flex: 1; }
-  .pi-id {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--accent2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .pi-loc {
-    font-size: 11px;
-    color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
-  }
-  .pi-price {
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--green);
-    white-space: nowrap;
-    flex-shrink: 0;
-    text-align: right;
-  }
-  .pi-area {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    text-align: right;
-  }
+  .pi-id { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent2); }
+  .pi-loc { font-size: 11px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pi-price { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--green); white-space: nowrap; text-align: right; }
+  .pi-area { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-align: right; margin-top: 2px; }
 
-  /* loading overlay on sidebar */
-  .load-status {
-    padding: 8px 16px;
-    font-size: 11px;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .load-bar {
-    flex: 1;
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .load-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width 0.3s;
-    width: 0%;
-  }
-
-  /* ── LEGEND ── */
+  /* ─────────────────────────────────────────────────────────────
+     LEGEND (map overlay)
+  ───────────────────────────────────────────────────────────── */
   .legend {
-    position: absolute;
-    bottom: 28px;
-    left: 12px;
-    z-index: 800;
-    background: rgba(24,28,39,0.94);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    backdrop-filter: blur(8px);
-    min-width: 160px;
+    position: absolute; bottom: 82px; left: 12px; z-index: 400;
+    background: rgba(24,28,39,0.92); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px;
+    font-size: 10px; font-family: 'DM Mono', monospace;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   }
-  .legend-title {
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-size: 10px;
-    margin-bottom: 8px;
-  }
-  .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--text); }
-  .legend-swatch { width: 14px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .legend-title { color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; font-size: 9px; margin-bottom: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: var(--text); font-size: 10px; }
+  .legend-swatch { width: 12px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 
-  /* ── POPUP ── */
+  /* ─────────────────────────────────────────────────────────────
+     POPUP
+  ───────────────────────────────────────────────────────────── */
   .leaflet-popup-content-wrapper {
-    background: var(--surface2) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 10px !important;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
-    padding: 0 !important;
+    background: var(--surface2) !important; border: 1px solid var(--border) !important;
+    border-radius: 10px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; padding: 0 !important;
   }
   .leaflet-popup-tip { background: var(--surface2) !important; }
   .leaflet-popup-content { margin: 0 !important; min-width: 220px; }
   .popup-inner { padding: 14px 16px; }
-  .popup-id {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    color: var(--accent2);
-    margin-bottom: 8px;
-  }
-  .popup-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 4px;
-    gap: 12px;
-  }
+  .popup-id { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent2); margin-bottom: 8px; }
+  .popup-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; gap: 12px; }
   .popup-label { font-size: 11px; color: var(--muted); flex-shrink: 0; }
   .popup-val { font-size: 12px; color: var(--text); text-align: right; font-family: 'DM Mono', monospace; }
   .popup-price { font-size: 16px; color: var(--green); font-family: 'DM Mono', monospace; font-weight: 500; margin: 10px 0 4px; }
   .popup-bgn { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
   .popup-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
   .popup-kais {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: rgba(232,184,75,0.1);
-    border: 1px solid rgba(232,184,75,0.3);
-    border-radius: 6px;
-    color: var(--accent);
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    padding: 5px 10px;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.15s;
-    margin-top: 6px;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(232,184,75,0.1); border: 1px solid rgba(232,184,75,0.3);
+    border-radius: 6px; color: var(--accent); font-size: 11px;
+    font-family: 'DM Mono', monospace; padding: 5px 10px; text-decoration: none;
+    cursor: pointer; transition: background 0.15s; margin-top: 6px;
   }
   .popup-kais:hover { background: rgba(232,184,75,0.22); }
-  .type-badge {
-    display: inline-block;
-    font-size: 11px;
-    padding: 2px 7px;
-    border-radius: 4px;
-    background: rgba(91,140,255,0.12);
-    color: #8ab4ff;
-    border: 1px solid rgba(91,140,255,0.2);
-  }
-  .cat-badge {
-    display: inline-block;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    padding: 2px 6px;
-    color: var(--muted);
-  }
+  .type-badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 4px; background: rgba(91,140,255,0.12); color: #8ab4ff; border: 1px solid rgba(91,140,255,0.2); }
+  .cat-badge { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 11px; padding: 2px 6px; color: var(--muted); }
 
-  /* Leaflet dark overrides */
-  .leaflet-control-zoom a {
-    background: var(--surface2) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
-  }
+  /* ─────────────────────────────────────────────────────────────
+     LEAFLET OVERRIDES
+  ───────────────────────────────────────────────────────────── */
+  .leaflet-control-zoom { margin-bottom: 80px !important; }
+  .leaflet-control-zoom a { background: var(--surface2) !important; color: var(--text) !important; border-color: var(--border) !important; width: 32px !important; height: 32px !important; line-height: 32px !important; }
   .leaflet-control-zoom a:hover { background: var(--surface) !important; color: var(--accent) !important; }
-  .leaflet-control-attribution { background: rgba(15,17,23,0.7) !important; color: var(--muted) !important; font-size: 10px !important; }
+  .leaflet-control-attribution { background: rgba(15,17,23,0.7) !important; color: var(--muted) !important; font-size: 9px !important; }
   .leaflet-control-attribution a { color: var(--muted) !important; }
+
+  /* ─────────────────────────────────────────────────────────────
+     DESKTOP OVERRIDES (≥ 768px)
+  ───────────────────────────────────────────────────────────── */
+  @media (min-width: 768px) {
+    :root { --header-h: 96px; }
+
+    header {
+      height: var(--header-h); flex-direction: column;
+      align-items: flex-start; justify-content: center;
+      padding: 12px 24px 10px; gap: 8px;
+    }
+    .header-row1 { display: flex; align-items: center; gap: 12px; width: 100%; }
+    h1 { font-size: 19px; }
+    .subtitle { font-size: 11px; }
+    .header-btn { display: none; }
+    .filter-panel {
+      display: none !important; /* desktop uses inline controls */
+    }
+    .desktop-controls {
+      display: flex !important;
+      gap: 8px; flex-wrap: wrap; align-items: center; width: 100%;
+    }
+    #map {
+      right: 320px; /* sidebar width */
+    }
+    .drawer { display: none !important; }
+    .sidebar {
+      display: flex !important;
+      position: fixed; top: var(--header-h); right: 0; bottom: 0;
+      width: 320px; z-index: 200;
+      background: var(--surface); border-left: 1px solid var(--border);
+      flex-direction: column; overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      font-size: 11px; color: var(--muted);
+      font-family: 'DM Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .sidebar .load-status { padding: 8px 16px; border-bottom: 1px solid var(--border); }
+    .sidebar .parcel-list { overflow-y: auto; flex: 1; }
+    .sidebar .parcel-list::-webkit-scrollbar { width: 4px; }
+    .sidebar .parcel-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .legend { bottom: 28px; }
+    .leaflet-control-zoom { margin-bottom: 16px !important; }
+
+    /* Desktop controls */
+    .desktop-controls input[type="text"] {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
+      padding: 7px 10px 7px 32px; outline: none; flex: 1; min-width: 180px; max-width: 280px;
+    }
+    .desktop-controls input[type="text"]:focus { border-color: var(--accent); }
+    .desktop-controls input[type="text"]::placeholder { color: var(--muted); }
+    .desktop-search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 280px; }
+    .desktop-search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+    .desktop-controls select {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 12px;
+      padding: 7px 26px 7px 9px; outline: none; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a9e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 7px center; background-color: var(--surface);
+    }
+    .desktop-controls select:focus { border-color: var(--accent); }
+    .stat-pills { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+    .stat-pills .pill { background: var(--surface); border: 1px solid var(--border); }
+    .user-chip { margin-left: 4px; }
+  }
 </style>
 </head>
 <body>
 
+<!-- ── HEADER ── -->
 <header>
-  <div class="header-top">
-    <div>
-      <h1>Общински поземлени имоти · Благоевград</h1>
+  <div class="header-row1">
+    <div class="header-title">
+      <h1>Общински имоти · Благоевград</h1>
       <div class="subtitle">Публичен търг 2026 — Изх. № 60-00-175 / 17.04.2026 г.</div>
     </div>
     <div class="badge" id="countBadge">135 имота</div>
-    <div class="user-bar">
-      <span class="user-name" id="userName"></span>
-      <a href="/logout" class="logout-btn">Sign out</a>
-    </div>
-    <div class="stat-pills">
-      <div class="pill">Общо: <span id="totalEur">—</span> €</div>
-      <div class="pill">Средна цена/дка: <span id="avgSqm">—</span> €</div>
+    <!-- Mobile filter toggle -->
+    <button class="header-btn" id="filterToggle" aria-label="Filters">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+    </button>
+    <!-- User chip -->
+    <div class="user-chip">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <span class="user-name-text" id="userName"></span>
+      <a href="/logout" class="logout-link">↩</a>
     </div>
   </div>
-  <div class="controls">
-    <div class="search-wrap">
+
+  <!-- Desktop inline controls (hidden on mobile via CSS) -->
+  <div class="desktop-controls" style="display:none">
+    <div class="desktop-search-wrap">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
       <input type="text" id="search" placeholder="Търси по ID, местност, вид…">
     </div>
@@ -382,9 +337,7 @@
       <option value="изоставена">Изоставена нива</option>
       <option value="друг">Друг вид</option>
     </select>
-    <select id="muncFilter">
-      <option value="">Всички общини</option>
-    </select>
+    <select id="muncFilter"><option value="">Всички общини</option></select>
     <select id="priceFilter">
       <option value="">Всички цени</option>
       <option value="0-5000">До € 5 000</option>
@@ -392,28 +345,73 @@
       <option value="20000-50000">€ 20 000 – 50 000</option>
       <option value="50000-">Над € 50 000</option>
     </select>
+    <div class="stat-pills">
+      <div class="pill">Общо: <span id="totalEur">—</span> €</div>
+      <div class="pill">Средна цена/дка: <span id="avgSqm">—</span> €</div>
+    </div>
   </div>
 </header>
 
-<div class="body-wrap">
-  <div id="map">
-    <div class="legend" id="legend">
-      <div class="legend-title">Начална цена</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:#3ecf8e"></div>До € 5 000</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:#5b8cff"></div>€ 5 000 – 20 000</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:#e8b84b"></div>€ 20 000 – 50 000</div>
-      <div class="legend-item"><div class="legend-swatch" style="background:#f87171"></div>Над € 50 000</div>
-      <div class="legend-item" style="margin-top:6px; opacity:0.5"><div class="legend-swatch" style="background:#6b7a9e"></div>Без геометрия</div>
+<!-- ── MOBILE FILTER PANEL ── -->
+<div class="filter-panel" id="filterPanel">
+  <div class="search-wrap">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    <input type="text" id="searchMobile" placeholder="Търси по ID, местност, вид…">
+  </div>
+  <select id="typeFilterMobile">
+    <option value="">Всички видове</option>
+    <option value="нива">Нива</option>
+    <option value="лозе">Лозе</option>
+    <option value="овощна">Овощна градина</option>
+    <option value="изоставена">Изоставена нива</option>
+    <option value="друг">Друг вид</option>
+  </select>
+  <select id="muncFilterMobile"><option value="">Всички общини</option></select>
+  <select id="priceFilterMobile">
+    <option value="">Всички цени</option>
+    <option value="0-5000">До € 5 000</option>
+    <option value="5000-20000">€ 5 000 – 20 000</option>
+    <option value="20000-50000">€ 20 000 – 50 000</option>
+    <option value="50000-">Над € 50 000</option>
+  </select>
+  <div class="stat-row">
+    <div class="pill">Общо: <span id="totalEurM">—</span> €</div>
+    <div class="pill">Средна: <span id="avgSqmM">—</span> €/дка</div>
+  </div>
+</div>
+
+<!-- ── MAP ── -->
+<div id="map">
+  <div class="legend">
+    <div class="legend-title">Начална цена</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#3ecf8e"></div>До € 5 000</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#5b8cff"></div>€ 5–20k</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e8b84b"></div>€ 20–50k</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f87171"></div>Над € 50k</div>
+  </div>
+</div>
+
+<!-- ── DESKTOP SIDEBAR ── -->
+<div class="sidebar" style="display:none">
+  <div class="sidebar-header" id="sidebarHeader">Зареждане…</div>
+  <div class="load-status" id="loadStatusDesktop">
+    <span class="load-text" id="loadTextDesktop">0 / 135</span>
+    <div class="load-bar"><div class="load-fill" id="loadFillDesktop"></div></div>
+  </div>
+  <div class="parcel-list" id="parcelListDesktop"></div>
+</div>
+
+<!-- ── MOBILE BOTTOM DRAWER ── -->
+<div class="drawer" id="drawer">
+  <div class="drawer-handle-bar" id="drawerHandle"></div>
+  <div class="drawer-top" id="drawerTop">
+    <span class="drawer-title" id="drawerTitle">Зареждане…</span>
+    <div class="load-status" id="loadStatusMobile" style="padding:0; flex:1; max-width:160px">
+      <span class="load-text" id="loadTextMobile">0/135</span>
+      <div class="load-bar"><div class="load-fill" id="loadFillMobile"></div></div>
     </div>
   </div>
-  <div class="sidebar">
-    <div class="sidebar-header" id="sidebarHeader">Зареждане на геометрии…</div>
-    <div class="load-status" id="loadStatus">
-      <span id="loadText">0 / 135</span>
-      <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
-    </div>
-    <div class="parcel-list" id="parcelList"></div>
-  </div>
+  <div class="parcel-list" id="parcelListMobile"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -558,10 +556,10 @@ const parcels = [
 ];
 
 // ── UTILS ──
+const isMobile = () => window.innerWidth < 768;
 function fmt(n) { return n.toLocaleString('bg-BG'); }
-function fmtEur(n) { return '€ ' + fmt(n); }
-function fmtBgn(n) { return fmt(n) + ' лв.'; }
-
+function fmtEur(n) { return '€ ' + fmt(n); }
+function fmtBgn(n) { return fmt(n) + ' лв.'; }
 function priceColor(eur) {
   if (eur < 5000)  return '#3ecf8e';
   if (eur < 20000) return '#5b8cff';
@@ -569,32 +567,105 @@ function priceColor(eur) {
   return '#f87171';
 }
 
-// ── MAP INIT ──
-const map = L.map('map', {
-  center: [41.99, 23.10],
-  zoom: 11,
-  zoomControl: true,
-  preferCanvas: false,
-});
-
-// Dark satellite-style tile layer (Esri World Imagery)
+// ── MAP ──
+const map = L.map('map', { center: [41.99, 23.10], zoom: 11, zoomControl: true });
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-  attribution: 'Tiles © Esri | © Cadastre.bg',
-  maxZoom: 19,
+  attribution: 'Tiles © Esri | © Cadastre.bg', maxZoom: 19,
 }).addTo(map);
-
-// Subtle label overlay
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-  attribution: '',
-  maxZoom: 19,
-  opacity: 0.6,
+  attribution: '', maxZoom: 19, opacity: 0.6,
 }).addTo(map);
 
 // ── STATE ──
-const geometryCache = {};   // id -> L.Polygon (or null if not found)
-const layerMap = {};        // id -> L.Polygon
+const layerMap = {};
 let activeId = null;
 let filteredIds = new Set(parcels.map(p => p.id));
+
+// ── BOTTOM DRAWER ──
+const drawer = document.getElementById('drawer');
+const PEEK = 72, HALF = 0.5, FULL = 1.0;
+let drawerState = 'peek'; // peek | half | full
+
+function setDrawer(state, animate = true) {
+  drawerState = state;
+  if (!animate) drawer.classList.add('dragging');
+  const h = drawer.offsetHeight;
+  let ty;
+  if (state === 'peek') ty = h - PEEK;
+  else if (state === 'half') ty = h * (1 - HALF);
+  else ty = h * (1 - FULL);
+  drawer.style.transform = `translateY(${ty}px)`;
+  if (!animate) { void drawer.offsetHeight; drawer.classList.remove('dragging'); }
+  // Invalidate map size when drawer changes
+  setTimeout(() => map.invalidateSize(), 350);
+}
+
+// Touch drag
+let touchStart = null, touchStartTransform = 0;
+function getTranslateY(el) {
+  const t = el.style.transform;
+  const m = t.match(/translateY\(([^)]+)px\)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+document.getElementById('drawerHandle').addEventListener('touchstart', e => {
+  touchStart = e.touches[0].clientY;
+  touchStartTransform = getTranslateY(drawer);
+  drawer.classList.add('dragging');
+}, { passive: true });
+
+document.getElementById('drawerTop').addEventListener('touchstart', e => {
+  touchStart = e.touches[0].clientY;
+  touchStartTransform = getTranslateY(drawer);
+  drawer.classList.add('dragging');
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (touchStart === null) return;
+  const delta = e.touches[0].clientY - touchStart;
+  const h = drawer.offsetHeight;
+  const newTy = Math.max(0, Math.min(h - PEEK, touchStartTransform + delta));
+  drawer.style.transform = `translateY(${newTy}px)`;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  if (touchStart === null) return;
+  drawer.classList.remove('dragging');
+  const h = drawer.offsetHeight;
+  const ty = getTranslateY(drawer);
+  const ratio = 1 - ty / h;
+  // Snap to nearest state
+  if (ratio < 0.25) setDrawer('peek');
+  else if (ratio < 0.75) setDrawer('half');
+  else setDrawer('full');
+  touchStart = null;
+});
+
+// Tap handle/top to cycle states
+document.getElementById('drawerTop').addEventListener('click', () => {
+  if (drawerState === 'peek') setDrawer('half');
+  else if (drawerState === 'half') setDrawer('full');
+  else setDrawer('peek');
+});
+document.getElementById('drawerHandle').addEventListener('click', () => {
+  if (drawerState === 'peek') setDrawer('half');
+  else if (drawerState === 'half') setDrawer('full');
+  else setDrawer('peek');
+});
+
+// ── FILTER TOGGLE ──
+const filterToggle = document.getElementById('filterToggle');
+const filterPanel = document.getElementById('filterPanel');
+filterToggle.addEventListener('click', () => {
+  const open = filterPanel.classList.toggle('open');
+  filterToggle.classList.toggle('active', open);
+  if (open && drawerState === 'full') setDrawer('half');
+});
+// Close filter panel when tapping map
+document.getElementById('map').addEventListener('click', () => {
+  filterPanel.classList.remove('open');
+  filterToggle.classList.remove('active');
+});
 
 // ── STATS ──
 function updateStats() {
@@ -603,19 +674,27 @@ function updateStats() {
   const totalArea = visible.reduce((s,p) => s+p.area, 0);
   const avg = totalArea > 0 ? Math.round(totalEur / (totalArea/1000)) : 0;
   document.getElementById('countBadge').textContent = visible.length + ' имота';
-  document.getElementById('totalEur').textContent = fmt(totalEur);
-  document.getElementById('avgSqm').textContent = avg + ' / дка';
+  // Desktop
+  const te = document.getElementById('totalEur');
+  const as = document.getElementById('avgSqm');
+  if (te) te.textContent = fmt(totalEur);
+  if (as) as.textContent = avg + ' / дка';
+  // Mobile
+  const tem = document.getElementById('totalEurM');
+  const asm = document.getElementById('avgSqmM');
+  if (tem) tem.textContent = fmt(totalEur);
+  if (asm) asm.textContent = avg;
 }
 
-// ── SIDEBAR ──
-function buildSidebar() {
-  const list = document.getElementById('parcelList');
-  list.innerHTML = '';
+// ── BUILD LIST ──
+function buildList(listEl, titleEl) {
+  if (!listEl) return;
+  listEl.innerHTML = '';
   const visible = parcels.filter(p => filteredIds.has(p.id));
   visible.forEach(p => {
     const item = document.createElement('div');
     item.className = 'parcel-item' + (layerMap[p.id] ? '' : ' no-geom');
-    item.id = 'item-' + p.id.replace(/\./g, '-');
+    item.id = (listEl.id === 'parcelListMobile' ? 'm-' : 'd-') + p.id.replace(/\./g, '-');
     const col = priceColor(p.eur);
     item.innerHTML = `
       <div class="pi-dot" style="background:${col}"></div>
@@ -627,12 +706,18 @@ function buildSidebar() {
         <div class="pi-price">${fmtEur(p.eur)}</div>
         <div class="pi-area">${fmt(p.area)} м²</div>
       </div>`;
-    item.addEventListener('click', () => selectParcel(p.id, true));
-    list.appendChild(item);
+    item.addEventListener('click', () => {
+      if (isMobile()) setDrawer('peek');
+      selectParcel(p.id, true);
+    });
+    listEl.appendChild(item);
   });
+  if (titleEl) titleEl.textContent = visible.length + ' имота' + (visible.length < parcels.length ? ' (филтрирани)' : '');
+}
 
-  document.getElementById('sidebarHeader').textContent =
-    visible.length + ' имота' + (visible.length < parcels.length ? ' (филтрирани)' : '');
+function buildSidebar() {
+  buildList(document.getElementById('parcelListDesktop'), document.getElementById('sidebarHeader'));
+  buildList(document.getElementById('parcelListMobile'), document.getElementById('drawerTitle'));
 }
 
 // ── POPUP ──
@@ -640,26 +725,11 @@ function makePopup(p) {
   const pdka = Math.round(p.eur / (p.area / 1000));
   return `<div class="popup-inner">
     <div class="popup-id">${p.id}</div>
-    <div class="popup-row">
-      <span class="popup-label">Местност</span>
-      <span class="popup-val">${p.local}</span>
-    </div>
-    <div class="popup-row">
-      <span class="popup-label">Населено място</span>
-      <span class="popup-val">${p.loc}</span>
-    </div>
-    <div class="popup-row">
-      <span class="popup-label">Вид</span>
-      <span class="type-badge">${p.type}</span>
-    </div>
-    <div class="popup-row">
-      <span class="popup-label">Площ</span>
-      <span class="popup-val">${fmt(p.area)} м²</span>
-    </div>
-    <div class="popup-row">
-      <span class="popup-label">Категория</span>
-      <span class="cat-badge">Кат. ${p.cat}</span>
-    </div>
+    <div class="popup-row"><span class="popup-label">Местност</span><span class="popup-val">${p.local}</span></div>
+    <div class="popup-row"><span class="popup-label">Населено място</span><span class="popup-val">${p.loc}</span></div>
+    <div class="popup-row"><span class="popup-label">Вид</span><span class="type-badge">${p.type}</span></div>
+    <div class="popup-row"><span class="popup-label">Площ</span><span class="popup-val">${fmt(p.area)} м²</span></div>
+    <div class="popup-row"><span class="popup-label">Категория</span><span class="cat-badge">Кат. ${p.cat}</span></div>
     <hr class="popup-divider">
     <div class="popup-price">${fmtEur(p.eur)}</div>
     <div class="popup-bgn">${fmtBgn(p.bgn)} · ${fmt(pdka)} €/дка</div>
@@ -675,46 +745,33 @@ window.openKAIS = function(id) {
   navigator.clipboard?.writeText(id).catch(()=>{});
 };
 
-// ── SELECT / HIGHLIGHT ──
+// ── SELECT ──
 function selectParcel(id, flyTo) {
-  // Deselect old
   if (activeId && layerMap[activeId]) {
     const p = parcels.find(x => x.id === activeId);
     layerMap[activeId].setStyle(normalStyle(p));
-    const oldItem = document.getElementById('item-' + activeId.replace(/\./g, '-'));
-    if (oldItem) oldItem.classList.remove('active');
+    ['m-','d-'].forEach(pfx => {
+      const el = document.getElementById(pfx + activeId.replace(/\./g,'-'));
+      if (el) el.classList.remove('active');
+    });
   }
   activeId = id;
-
-  const item = document.getElementById('item-' + id.replace(/\./g, '-'));
-  if (item) {
-    item.classList.add('active');
-    item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }
-
+  ['m-','d-'].forEach(pfx => {
+    const el = document.getElementById(pfx + id.replace(/\./g,'-'));
+    if (el) { el.classList.add('active'); el.scrollIntoView({ block:'nearest', behavior:'smooth' }); }
+  });
   const layer = layerMap[id];
   if (!layer) return;
-
   const p = parcels.find(x => x.id === id);
   layer.setStyle({ ...normalStyle(p), weight: 3, opacity: 1, fillOpacity: 0.55 });
   layer.bringToFront();
-
-  if (flyTo) {
-    map.fitBounds(layer.getBounds(), { maxZoom: 17, padding: [40, 40] });
-  }
-
+  if (flyTo) map.fitBounds(layer.getBounds(), { maxZoom: 17, padding: [40, 40] });
   layer.openPopup();
 }
 
 function normalStyle(p) {
   const col = priceColor(p.eur);
-  return {
-    color: col,
-    weight: 1.5,
-    opacity: 0.85,
-    fillColor: col,
-    fillOpacity: 0.28,
-  };
+  return { color: col, weight: 1.5, opacity: 0.85, fillColor: col, fillOpacity: 0.28 };
 }
 
 // ── GEOMETRY FETCH ──
@@ -722,34 +779,19 @@ const INSPIRE_URL = 'https://inspire.cadastre.bg/arcgis/rest/services/Cadastral_
 const BATCH_SIZE = 20;
 let loadedCount = 0;
 
-function buildWhereClause(ids) {
-  const quoted = ids.map(id => `'${id}'`).join(',');
-  return `nationalcadastralref IN (${quoted})`;
-}
-
 async function fetchBatch(ids) {
-  const where = buildWhereClause(ids);
-  const params = new URLSearchParams({
-    where,
-    outFields: 'nationalcadastralref',
-    returnGeometry: 'true',
-    outSR: '4326',
-    f: 'geojson',
-  });
+  const where = `nationalcadastralref IN (${ids.map(id => `'${id}'`).join(',')})`;
+  const params = new URLSearchParams({ where, outFields:'nationalcadastralref', returnGeometry:'true', outSR:'4326', f:'geojson' });
   const res = await fetch(`${INSPIRE_URL}?${params}`);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
 
-function addParcelLayer(p, geojsonFeature) {
-  // GeoJSON rings are [lng, lat]; Leaflet wants [lat, lng]
-  const latlngs = geojsonFeature.geometry.coordinates[0].map(([lng, lat]) => [lat, lng]);
+function addParcelLayer(p, feat) {
+  const coords = feat.geometry.type === 'MultiPolygon' ? feat.geometry.coordinates[0] : feat.geometry.coordinates;
+  const latlngs = coords[0].map(([lng, lat]) => [lat, lng]);
   const layer = L.polygon(latlngs, normalStyle(p));
-
-  layer.bindPopup(makePopup(p), {
-    maxWidth: 280,
-    className: 'dark-popup',
-  });
+  layer.bindPopup(makePopup(p), { maxWidth: 280 });
   layer.on('click', () => selectParcel(p.id, false));
   layer.addTo(map);
   layerMap[p.id] = layer;
@@ -758,12 +800,7 @@ function addParcelLayer(p, geojsonFeature) {
 async function loadAllGeometries() {
   const allIds = parcels.map(p => p.id);
   const batches = [];
-  for (let i = 0; i < allIds.length; i += BATCH_SIZE) {
-    batches.push(allIds.slice(i, i + BATCH_SIZE));
-  }
-
-  const loadFill = document.getElementById('loadFill');
-  const loadText = document.getElementById('loadText');
+  for (let i = 0; i < allIds.length; i += BATCH_SIZE) batches.push(allIds.slice(i, i + BATCH_SIZE));
 
   for (const batch of batches) {
     try {
@@ -771,103 +808,103 @@ async function loadAllGeometries() {
       if (geojson.features) {
         for (const feat of geojson.features) {
           const ref = feat.properties?.nationalcadastralref;
-          if (!ref) continue;
-          const p = parcels.find(x => x.id === ref);
-          if (!p) continue;
-          if (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon') {
-            addParcelLayer(p, feat.geometry.type === 'MultiPolygon'
-              ? { geometry: { coordinates: feat.geometry.coordinates[0] } }
-              : feat);
-          }
+          const p = ref && parcels.find(x => x.id === ref);
+          if (p && (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon')) addParcelLayer(p, feat);
         }
       }
-    } catch (e) {
-      console.warn('Batch failed:', e);
-    }
+    } catch(e) { console.warn('Batch failed:', e); }
 
     loadedCount += batch.length;
     const pct = Math.round(loadedCount / allIds.length * 100);
-    loadFill.style.width = pct + '%';
-    loadText.textContent = loadedCount + ' / ' + allIds.length;
+    ['Desktop','Mobile'].forEach(s => {
+      const f = document.getElementById('loadFill'+s);
+      const t = document.getElementById('loadText'+s);
+      if (f) f.style.width = pct + '%';
+      if (t) t.textContent = s === 'Mobile' ? `${loadedCount}/${allIds.length}` : `${loadedCount} / ${allIds.length}`;
+    });
   }
 
-  // Done
   const geomCount = Object.keys(layerMap).length;
-  document.getElementById('loadStatus').style.display = 'none';
-  document.getElementById('sidebarHeader').textContent =
-    geomCount + ' геометрии заредени · ' + (parcels.length - geomCount) + ' без данни';
+  const msg = `${geomCount} имота на картата`;
+  ['loadStatusDesktop','loadStatusMobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const sh = document.getElementById('sidebarHeader');
+  const dt = document.getElementById('drawerTitle');
+  if (sh) sh.textContent = msg;
+  if (dt) dt.textContent = msg;
 
   buildSidebar();
-
-  // Fit to all loaded parcels
   const allLayers = Object.values(layerMap);
-  if (allLayers.length > 0) {
-    const group = L.featureGroup(allLayers);
-    map.fitBounds(group.getBounds(), { padding: [20, 20] });
-  }
+  if (allLayers.length > 0) map.fitBounds(L.featureGroup(allLayers).getBounds(), { padding: [20, 20] });
 }
 
 // ── FILTERS ──
 const muncs = [...new Set(parcels.map(p => p.loc))].sort();
-const muncSel = document.getElementById('muncFilter');
-muncs.forEach(m => {
-  const o = document.createElement('option');
-  o.value = m; o.textContent = m;
-  muncSel.appendChild(o);
+['muncFilter','muncFilterMobile'].forEach(id => {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  muncs.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
 });
 
 function applyFilters() {
-  const q = document.getElementById('search').value.toLowerCase();
-  const t = document.getElementById('typeFilter').value.toLowerCase();
-  const m = document.getElementById('muncFilter').value;
-  const pr = document.getElementById('priceFilter').value;
+  const q = (document.getElementById('search')?.value || document.getElementById('searchMobile')?.value || '').toLowerCase();
+  const t = (document.getElementById('typeFilter')?.value || document.getElementById('typeFilterMobile')?.value || '').toLowerCase();
+  const m = document.getElementById('muncFilter')?.value || document.getElementById('muncFilterMobile')?.value || '';
+  const pr = document.getElementById('priceFilter')?.value || document.getElementById('priceFilterMobile')?.value || '';
 
   filteredIds = new Set();
   parcels.forEach(p => {
-    const matchQ = !q || p.id.toLowerCase().includes(q) ||
-      p.loc.toLowerCase().includes(q) || p.local.toLowerCase().includes(q) ||
-      p.type.toLowerCase().includes(q);
+    const matchQ = !q || p.id.toLowerCase().includes(q) || p.loc.toLowerCase().includes(q) || p.local.toLowerCase().includes(q) || p.type.toLowerCase().includes(q);
     const matchT = !t || p.type.toLowerCase().includes(t);
     const matchM = !m || p.loc === m;
     let matchP = true;
-    if (pr) {
-      const [lo, hi] = pr.split('-').map(Number);
-      matchP = hi ? (p.eur >= lo && p.eur < hi) : (p.eur >= lo);
-    }
+    if (pr) { const [lo, hi] = pr.split('-').map(Number); matchP = hi ? (p.eur >= lo && p.eur < hi) : (p.eur >= lo); }
     if (matchQ && matchT && matchM && matchP) filteredIds.add(p.id);
   });
 
-  // Show/hide map layers
   parcels.forEach(p => {
     const layer = layerMap[p.id];
     if (!layer) return;
-    if (filteredIds.has(p.id)) {
-      if (!map.hasLayer(layer)) layer.addTo(map);
-    } else {
-      if (map.hasLayer(layer)) layer.remove();
-    }
+    if (filteredIds.has(p.id)) { if (!map.hasLayer(layer)) layer.addTo(map); }
+    else { if (map.hasLayer(layer)) layer.remove(); }
   });
 
   updateStats();
   buildSidebar();
 }
 
-['search', 'typeFilter', 'muncFilter', 'priceFilter'].forEach(id => {
-  const el = document.getElementById(id);
-  el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', applyFilters);
-});
+// Sync mobile ↔ desktop filter values
+function syncFilters(srcId, targets) {
+  const src = document.getElementById(srcId);
+  if (!src) return;
+  src.addEventListener('input', () => { targets.forEach(id => { const el = document.getElementById(id); if (el) el.value = src.value; }); applyFilters(); });
+  src.addEventListener('change', () => { targets.forEach(id => { const el = document.getElementById(id); if (el) el.value = src.value; }); applyFilters(); });
+}
+syncFilters('search',          ['searchMobile']);
+syncFilters('searchMobile',    ['search']);
+syncFilters('typeFilter',      ['typeFilterMobile']);
+syncFilters('typeFilterMobile',['typeFilter']);
+syncFilters('muncFilter',      ['muncFilterMobile']);
+syncFilters('muncFilterMobile',['muncFilter']);
+syncFilters('priceFilter',     ['priceFilterMobile']);
+syncFilters('priceFilterMobile',['priceFilter']);
 
-// ── USER INFO (Azure Static Web Apps /.auth/me) ──
+// ── USER INFO ──
 fetch('/.auth/me').then(r => r.json()).then(data => {
   const user = data?.clientPrincipal;
   if (!user) return;
-  const name = user.userDetails || user.userId || '';
+  const name = user.userDetails || '';
   document.getElementById('userName').textContent = name;
+  const initials = name.split('@')[0].slice(0,2).toUpperCase();
+  document.getElementById('userAvatar').textContent = initials || '?';
 }).catch(() => {});
 
 // ── INIT ──
 updateStats();
 buildSidebar();
+setDrawer('peek', false);
 loadAllGeometries();
 </script>
 </body>
