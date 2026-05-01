@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Access Required — Blagoevgrad Parcels</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap');
+  :root { --bg:#0f1117; --surface:#181c27; --border:#2a3048; --accent:#e8b84b; --text:#dde3f0; --muted:#6b7a9e; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:48px 40px; max-width:420px; text-align:center; }
+  .icon { font-size:40px; margin-bottom:20px; }
+  h1 { font-family:'Playfair Display',serif; font-size:22px; color:var(--accent); margin-bottom:10px; }
+  p { color:var(--muted); font-size:14px; line-height:1.6; margin-bottom:8px; }
+  .email { font-family:'DM Mono',monospace; color:var(--text); font-size:13px; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 14px; display:inline-block; margin:14px 0 20px; }
+  .btn { display:inline-block; background:rgba(232,184,75,0.1); border:1px solid rgba(232,184,75,0.35); border-radius:8px; color:var(--accent); font-family:'DM Mono',monospace; font-size:12px; padding:10px 20px; text-decoration:none; transition:background 0.15s; }
+  .btn:hover { background:rgba(232,184,75,0.2); }
+  .logout { display:block; margin-top:16px; font-size:12px; color:var(--muted); text-decoration:none; }
+  .logout:hover { color:var(--text); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">🔒</div>
+  <h1>Access Required</h1>
+  <p>You're signed in but haven't been granted access to this app yet.</p>
+  <p>Contact the administrator to request access:</p>
+  <div class="email">petar@theitpanda.com</div>
+  <p style="font-size:12px">Once granted, refresh this page or sign in again.</p>
+  <a href="mailto:petar@theitpanda.com?subject=Access%20request%20%E2%80%94%20Blagoevgrad%20Parcels&body=Hi%20Petar%2C%0A%0ACould%20you%20please%20grant%20me%20access%20to%20the%20Blagoevgrad%20parcels%20app%3F%0A%0AThanks" class="btn">Request Access by Email</a>
+  <a href="/.auth/logout?post_logout_redirect_uri=/" class="logout">Sign out</a>
+</div>
+</body>
+</html>

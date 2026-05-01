@@ -44,6 +44,20 @@
     z-index: 1000;
   }
   .header-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  .user-bar {
+    display: flex; align-items: center; gap: 10px;
+    margin-left: auto; flex-shrink: 0;
+  }
+  .user-name {
+    font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted);
+  }
+  .logout-btn {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 4px 10px; text-decoration: none; transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .logout-btn:hover { color: var(--text); border-color: var(--muted); }
   h1 {
     font-family: 'Playfair Display', serif;
     font-size: 19px;
@@ -346,6 +360,10 @@
       <div class="subtitle">Публичен търг 2026 — Изх. № 60-00-175 / 17.04.2026 г.</div>
     </div>
     <div class="badge" id="countBadge">135 имота</div>
+    <div class="user-bar">
+      <span class="user-name" id="userName"></span>
+      <a href="/logout" class="logout-btn">Sign out</a>
+    </div>
     <div class="stat-pills">
       <div class="pill">Общо: <span id="totalEur">—</span> €</div>
       <div class="pill">Средна цена/дка: <span id="avgSqm">—</span> €</div>
@@ -838,6 +856,14 @@ function applyFilters() {
   const el = document.getElementById(id);
   el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', applyFilters);
 });
+
+// ── USER INFO (Azure Static Web Apps /.auth/me) ──
+fetch('/.auth/me').then(r => r.json()).then(data => {
+  const user = data?.clientPrincipal;
+  if (!user) return;
+  const name = user.userDetails || user.userId || '';
+  document.getElementById('userName').textContent = name;
+}).catch(() => {});
 
 // ── INIT ──
 updateStats();
