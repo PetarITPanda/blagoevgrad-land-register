@@ -448,11 +448,11 @@
 <!-- ── MAP ── -->
 <div id="map">
   <div class="legend">
-    <div class="legend-title">Начална цена</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#3ecf8e"></div>До € 5 000</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#5b8cff"></div>€ 5–20k</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#e8b84b"></div>€ 20–50k</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:#f87171"></div>Над € 50k</div>
+    <div class="legend-title">Цена / м²</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#3ecf8e"></div>До 2 €/м²</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#5b8cff"></div>2–10 €/м²</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e8b84b"></div>10–20 €/м²</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f87171"></div>Над 20 €/м²</div>
     <div style="border-top:1px solid var(--border);margin:6px 0"></div>
     <div class="legend-item"><div class="legend-swatch" style="background:#a855f7;border-radius:50%"></div><span style="color:#c084fc">За продажба</span></div>
   </div>
@@ -715,10 +715,11 @@ const isMobile = () => window.innerWidth < 768;
 function fmt(n) { return n.toLocaleString('bg-BG'); }
 function fmtEur(n) { return '€ ' + fmt(n); }
 function fmtBgn(n) { return fmt(n) + ' лв.'; }
-function priceColor(eur) {
-  if (eur < 5000)  return '#3ecf8e';
-  if (eur < 20000) return '#5b8cff';
-  if (eur < 50000) return '#e8b84b';
+function priceColor(eur, area) {
+  const sqm = area > 0 ? eur / area : 0;
+  if (sqm < 2)  return '#3ecf8e';
+  if (sqm < 10) return '#5b8cff';
+  if (sqm < 20) return '#e8b84b';
   return '#f87171';
 }
 
@@ -860,7 +861,7 @@ function buildList(listEl, titleEl) {
   const topParcels = [...forSaleParcels, ...customParcels];
   topParcels.forEach(p => {
     const isSale = p.special || p.sale;
-    const col = isSale ? PURPLE : priceColor(p.eur);
+    const col = isSale ? PURPLE : priceColor(p.eur, p.area);
     const textCol = isSale ? '#c084fc' : col;
     const tag = isSale ? 'ЗА ПРОДАЖБА' : 'ТЪРГ';
     const item = document.createElement('div');
@@ -891,7 +892,7 @@ function buildList(listEl, titleEl) {
     const item = document.createElement('div');
     item.className = 'parcel-item' + (layerMap[p.id] ? '' : ' no-geom');
     item.id = (listEl.id === 'parcelListMobile' ? 'm-' : 'd-') + p.id.replace(/\./g, '-');
-    const col = priceColor(p.eur);
+    const col = priceColor(p.eur, p.area);
     item.innerHTML = `
       <div class="pi-dot" style="background:${col}"></div>
       <div class="pi-info">
@@ -995,7 +996,7 @@ function selectParcel(id, flyTo) {
 
 function normalStyle(p) {
   if (p?.special || p?.sale) return { color: PURPLE, weight: 2, opacity: 0.9, fillColor: PURPLE, fillOpacity: 0.25, dashArray: '6 4' };
-  const col = priceColor(p.eur);
+  const col = priceColor(p.eur, p.area);
   return { color: col, weight: 1.5, opacity: 0.85, fillColor: col, fillOpacity: 0.28 };
 }
 
