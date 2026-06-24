@@ -397,6 +397,8 @@
     <div class="legend-item"><div class="legend-swatch" style="background:#5b8cff"></div>€ 5–20k</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#e8b84b"></div>€ 20–50k</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#f87171"></div>Над € 50k</div>
+    <div style="border-top:1px solid var(--border);margin:6px 0"></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#a855f7;border-radius:50%"></div><span style="color:#c084fc">За продажба</span></div>
   </div>
 </div>
 
@@ -580,6 +582,12 @@ const parcels = [
   {id:"04279.21.1",  loc:"гр. Благоевград", local:"ПОД ГРАМАДА-Ш.13",type:"нива",         area:1346, cat:5, eur:15620,  bgn:30550.06},
 ];
 
+// ── PRIVATE LISTINGS (not part of auction) ──
+const PURPLE = '#a855f7';
+const forSaleParcels = [
+  {id:"03664.17.24", loc:"с. Бело поле", local:"РИДАРА", type:"земеделска земя", eur:225000, bgn:440055, special:true}
+];
+
 // ── UTILS ──
 const isMobile = () => window.innerWidth < 768;
 function fmt(n) { return n.toLocaleString('bg-BG'); }
@@ -725,6 +733,30 @@ function sortedVisible() {
 function buildList(listEl, titleEl) {
   if (!listEl) return;
   listEl.innerHTML = '';
+
+  // Special (non-auction) parcels pinned at top
+  forSaleParcels.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'parcel-item' + (layerMap[p.id] ? '' : ' no-geom');
+    item.id = (listEl.id === 'parcelListMobile' ? 'm-' : 'd-') + p.id.replace(/\./g, '-');
+    item.style.cssText = `border-left:3px solid ${PURPLE};padding-left:13px;background:rgba(168,85,247,0.04)`;
+    item.innerHTML = `
+      <div class="pi-dot" style="background:${PURPLE};border-radius:50%"></div>
+      <div class="pi-info">
+        <div class="pi-id" style="color:#c084fc">${p.id}</div>
+        <div class="pi-loc">${p.loc} · ${p.local}</div>
+        <div style="margin-top:3px;font-size:9px;color:#c084fc;font-family:'DM Mono',monospace;letter-spacing:0.06em">ЗА ПРОДАЖБА</div>
+      </div>
+      <div>
+        <div class="pi-price" style="color:#c084fc">${fmtEur(p.eur)}</div>
+      </div>`;
+    item.addEventListener('click', () => {
+      if (isMobile()) setDrawer('peek');
+      selectParcel(p.id, true);
+    });
+    listEl.appendChild(item);
+  });
+
   const visible = sortedVisible();
   visible.forEach(p => {
     const item = document.createElement('div');
@@ -780,10 +812,36 @@ window.openKAIS = function(id) {
   navigator.clipboard?.writeText(id).catch(()=>{});
 };
 
+function findParcel(id) {
+  return parcels.find(x => x.id === id) || forSaleParcels.find(x => x.id === id);
+}
+
+function makeSpecialPopup(p) {
+  return `<div class="popup-inner">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div class="popup-id" style="margin:0;color:#c084fc">${p.id}</div>
+      <span style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.4);border-radius:4px;padding:2px 7px;font-size:10px;color:#c084fc;font-family:'DM Mono',monospace;flex-shrink:0">ЗА ПРОДАЖБА</span>
+    </div>
+    <div class="popup-row"><span class="popup-label">Местност</span><span class="popup-val">${p.local}</span></div>
+    <div class="popup-row"><span class="popup-label">Населено място</span><span class="popup-val">${p.loc}</span></div>
+    <div class="popup-row"><span class="popup-label">Вид</span><span class="type-badge">${p.type}</span></div>
+    <hr class="popup-divider">
+    <div class="popup-price" style="color:#c084fc">${fmtEur(p.eur)}</div>
+    <div class="popup-bgn">${fmtBgn(p.bgn)}</div>
+    <div style="margin-top:10px;padding:8px 10px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:6px;font-size:11px;color:#c084fc">
+      Не е от общинския търг — намерен самостоятелно
+    </div>
+    <button class="popup-kais" onclick="openKAIS('${p.id}')" style="border-color:rgba(168,85,247,0.35);color:#c084fc;background:rgba(168,85,247,0.1);margin-top:8px">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Отвори в КАИС
+    </button>
+  </div>`;
+}
+
 // ── SELECT ──
 function selectParcel(id, flyTo) {
   if (activeId && layerMap[activeId]) {
-    const p = parcels.find(x => x.id === activeId);
+    const p = findParcel(activeId);
     layerMap[activeId].setStyle(normalStyle(p));
     ['m-','d-'].forEach(pfx => {
       const el = document.getElementById(pfx + activeId.replace(/\./g,'-'));
@@ -797,7 +855,7 @@ function selectParcel(id, flyTo) {
   });
   const layer = layerMap[id];
   if (!layer) return;
-  const p = parcels.find(x => x.id === id);
+  const p = findParcel(id);
   layer.setStyle({ ...normalStyle(p), weight: 3, opacity: 1, fillOpacity: 0.55 });
   layer.bringToFront();
   if (flyTo) map.fitBounds(layer.getBounds(), { maxZoom: 17, padding: [40, 40] });
@@ -805,6 +863,7 @@ function selectParcel(id, flyTo) {
 }
 
 function normalStyle(p) {
+  if (p?.special) return { color: PURPLE, weight: 2, opacity: 0.9, fillColor: PURPLE, fillOpacity: 0.25, dashArray: '6 4' };
   const col = priceColor(p.eur);
   return { color: col, weight: 1.5, opacity: 0.85, fillColor: col, fillOpacity: 0.28 };
 }
@@ -873,6 +932,33 @@ async function loadAllGeometries() {
   buildSidebar();
   const allLayers = Object.values(layerMap);
   if (allLayers.length > 0) map.fitBounds(L.featureGroup(allLayers).getBounds(), { padding: [20, 20] });
+}
+
+async function loadSpecialGeometries() {
+  const ids = forSaleParcels.map(p => p.id);
+  try {
+    const where = `nationalcadastralref IN (${ids.map(id => `'${id}'`).join(',')})`;
+    const params = new URLSearchParams({ where, outFields:'nationalcadastralref', returnGeometry:'true', outSR:'4326', f:'geojson' });
+    const res = await fetch(`${INSPIRE_URL}?${params}`);
+    if (!res.ok) return;
+    const geojson = await res.json();
+    if (geojson.features) {
+      for (const feat of geojson.features) {
+        const ref = feat.properties?.nationalcadastralref;
+        const p = ref && forSaleParcels.find(x => x.id === ref);
+        if (p && (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon')) {
+          const coords = feat.geometry.type === 'MultiPolygon' ? feat.geometry.coordinates[0] : feat.geometry.coordinates;
+          const latlngs = coords[0].map(([lng, lat]) => [lat, lng]);
+          const layer = L.polygon(latlngs, normalStyle(p));
+          layer.bindPopup(makeSpecialPopup(p), { maxWidth: 280 });
+          layer.on('click', () => selectParcel(p.id, false));
+          layer.addTo(map);
+          layerMap[p.id] = layer;
+          buildSidebar();
+        }
+      }
+    }
+  } catch(e) { console.warn('Special parcel fetch failed:', e); }
 }
 
 // ── FILTERS ──
@@ -956,6 +1042,7 @@ updateStats();
 buildSidebar();
 setDrawer('peek', false);
 loadAllGeometries();
+loadSpecialGeometries();
 </script>
 </body>
 </html>
