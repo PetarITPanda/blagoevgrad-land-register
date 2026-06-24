@@ -241,6 +241,54 @@
   .leaflet-control-attribution { background: rgba(15,17,23,0.7) !important; color: var(--muted) !important; font-size: 9px !important; }
   .leaflet-control-attribution a { color: var(--muted) !important; }
 
+  /* ── ADD PLOT MODAL ── */
+  .add-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.22s;
+  }
+  .add-overlay.open { opacity: 1; pointer-events: all; }
+  .add-modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0; width: 100%; max-width: 520px;
+    padding: 20px 20px 32px; max-height: 92vh; overflow-y: auto;
+    transform: translateY(30px); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+  .add-overlay.open .add-modal { transform: translateY(0); }
+  .add-modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 18px; }
+  .add-modal h2 { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--accent); margin-bottom: 16px; }
+  .add-field { margin-bottom: 12px; }
+  .add-field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; font-family: 'DM Mono', monospace; letter-spacing: 0.05em; }
+  .add-field input, .add-field select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    padding: 9px 12px; outline: none;
+  }
+  .add-field input:focus, .add-field select:focus { border-color: var(--accent); }
+  .add-field input::placeholder { color: var(--muted); font-size: 12px; }
+  .add-field select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a9e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-color: var(--bg); }
+  .add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .add-type-btns { display: flex; gap: 8px; margin-bottom: 16px; }
+  .add-type-btn {
+    flex: 1; padding: 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg);
+    font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted);
+    text-align: center; transition: all 0.15s;
+  }
+  .add-type-btn.active-sale { border-color: #a855f7; background: rgba(168,85,247,0.1); color: #c084fc; }
+  .add-type-btn.active-auction { border-color: var(--accent); background: rgba(232,184,75,0.1); color: var(--accent); }
+  .add-footer { display: flex; gap: 10px; margin-top: 18px; }
+  .btn-cancel { flex: 1; padding: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 13px; cursor: pointer; }
+  .btn-cancel:hover { border-color: var(--text); color: var(--text); }
+  .btn-save { flex: 2; padding: 11px; background: var(--accent); border: none; border-radius: 8px; color: #0f1117; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-save:hover { opacity: 0.9; }
+  .btn-save:disabled { opacity: 0.4; cursor: default; }
+  .add-error { font-size: 11px; color: var(--red); margin-top: 8px; min-height: 16px; font-family: 'DM Mono', monospace; }
+  .pi-remove { background: none; border: none; color: var(--border); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; border-radius: 4px; flex-shrink: 0; margin-left: 2px; }
+  .pi-remove:hover { color: var(--red); }
+
   /* ─────────────────────────────────────────────────────────────
      DESKTOP OVERRIDES (≥ 768px)
   ───────────────────────────────────────────────────────────── */
@@ -324,6 +372,10 @@
     <button class="header-btn" id="filterToggle" aria-label="Filters">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
     </button>
+    <!-- Add plot button -->
+    <button class="header-btn" id="addPlotBtn" aria-label="Добави имот" title="Добави имот" style="color:#a855f7;border-color:rgba(168,85,247,0.35)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
     <!-- User chip -->
     <div class="user-chip">
       <div class="user-avatar" id="userAvatar">?</div>
@@ -358,6 +410,10 @@
       <div class="pill">Общо: <span id="totalEur">—</span> €</div>
       <div class="pill">Средна цена/дка: <span id="avgSqm">—</span> €</div>
     </div>
+    <button id="addPlotBtnDesktop" style="display:flex;align-items:center;gap:5px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.4);border-radius:8px;color:#c084fc;font-family:'DM Mono',monospace;font-size:12px;padding:7px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Добави имот
+    </button>
   </div>
 </header>
 
@@ -439,6 +495,72 @@
     </div>
   </div>
   <div class="parcel-list" id="parcelListMobile"></div>
+</div>
+
+<!-- ── ADD PLOT MODAL ── -->
+<div class="add-overlay" id="addOverlay">
+  <div class="add-modal" id="addModal">
+    <div class="add-modal-handle"></div>
+    <h2>Добави имот</h2>
+
+    <div class="add-field">
+      <label>ТИП НА ИМОТА</label>
+      <div class="add-type-btns">
+        <div class="add-type-btn active-sale" id="typeBtnSale" onclick="setAddType('sale')">🟣 За продажба</div>
+        <div class="add-type-btn" id="typeBtnAuction" onclick="setAddType('auction')">🟡 Търг / Аукцион</div>
+      </div>
+    </div>
+
+    <div class="add-field">
+      <label>КАДАСТРАЛЕН № *</label>
+      <input type="text" id="addId" placeholder="напр. 04279.36.119">
+    </div>
+
+    <div class="add-row">
+      <div class="add-field">
+        <label>НАСЕЛЕНО МЯСТО *</label>
+        <input type="text" id="addLoc" placeholder="напр. гр. Благоевград">
+      </div>
+      <div class="add-field">
+        <label>МЕСТНОСТ</label>
+        <input type="text" id="addLocal" placeholder="напр. Баларбаши">
+      </div>
+    </div>
+
+    <div class="add-row">
+      <div class="add-field">
+        <label>ВИД ИМОТ</label>
+        <input type="text" id="addType" placeholder="напр. нива, лозе…">
+      </div>
+      <div class="add-field">
+        <label>ПЛОЩ (кв.м)</label>
+        <input type="number" id="addArea" placeholder="напр. 1500" min="1">
+      </div>
+    </div>
+
+    <div class="add-row">
+      <div class="add-field">
+        <label>ЦЕНА (€) *</label>
+        <input type="number" id="addEur" placeholder="напр. 25000" min="1">
+      </div>
+      <div class="add-field">
+        <label>ЦЕНА (лв.) — незадължително</label>
+        <input type="number" id="addBgn" placeholder="изчислява се автоматично">
+      </div>
+    </div>
+
+    <div class="add-field">
+      <label>БЕЛЕЖКА (незадължително)</label>
+      <input type="text" id="addNote" placeholder="напр. Намерен в Imot.bg">
+    </div>
+
+    <div class="add-error" id="addError"></div>
+
+    <div class="add-footer">
+      <button class="btn-cancel" onclick="closeAddModal()">Отказ</button>
+      <button class="btn-save" id="addSaveBtn" onclick="saveCustomParcel()">Запази и добави на картата</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -585,7 +707,7 @@ const parcels = [
 // ── PRIVATE LISTINGS (not part of auction) ──
 const PURPLE = '#a855f7';
 const forSaleParcels = [
-  {id:"03664.17.24", loc:"с. Бело поле", local:"РИДАРА", type:"земеделска земя", eur:225000, bgn:440055, special:true}
+  {id:"03664.17.24", loc:"с. Бело поле", local:"РИДАРА", type:"земеделска земя", area:4055, eur:225000, bgn:440055, special:true}
 ];
 
 // ── UTILS ──
@@ -734,21 +856,28 @@ function buildList(listEl, titleEl) {
   if (!listEl) return;
   listEl.innerHTML = '';
 
-  // Special (non-auction) parcels pinned at top
-  forSaleParcels.forEach(p => {
+  // Non-auction parcels pinned at top (hardcoded + custom)
+  const topParcels = [...forSaleParcels, ...customParcels];
+  topParcels.forEach(p => {
+    const isSale = p.special || p.sale;
+    const col = isSale ? PURPLE : priceColor(p.eur);
+    const textCol = isSale ? '#c084fc' : col;
+    const tag = isSale ? 'ЗА ПРОДАЖБА' : 'ТЪРГ';
     const item = document.createElement('div');
     item.className = 'parcel-item' + (layerMap[p.id] ? '' : ' no-geom');
     item.id = (listEl.id === 'parcelListMobile' ? 'm-' : 'd-') + p.id.replace(/\./g, '-');
-    item.style.cssText = `border-left:3px solid ${PURPLE};padding-left:13px;background:rgba(168,85,247,0.04)`;
+    item.style.cssText = `border-left:3px solid ${col};padding-left:13px;background:${isSale ? 'rgba(168,85,247,0.04)' : 'rgba(232,184,75,0.04)'}`;
     item.innerHTML = `
-      <div class="pi-dot" style="background:${PURPLE};border-radius:50%"></div>
-      <div class="pi-info">
-        <div class="pi-id" style="color:#c084fc">${p.id}</div>
-        <div class="pi-loc">${p.loc} · ${p.local}</div>
-        <div style="margin-top:3px;font-size:9px;color:#c084fc;font-family:'DM Mono',monospace;letter-spacing:0.06em">ЗА ПРОДАЖБА</div>
+      <div class="pi-dot" style="background:${col};border-radius:${isSale ? '50%' : '2px'}"></div>
+      <div class="pi-info" style="min-width:0;flex:1">
+        <div class="pi-id" style="color:${textCol}">${p.id}</div>
+        <div class="pi-loc">${p.loc}${p.local ? ' · ' + p.local : ''}</div>
+        <div style="margin-top:3px;font-size:9px;color:${textCol};font-family:'DM Mono',monospace;letter-spacing:0.06em">${tag}${p.note ? ' · ' + p.note : ''}</div>
       </div>
-      <div>
-        <div class="pi-price" style="color:#c084fc">${fmtEur(p.eur)}</div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="pi-price" style="color:${textCol}">${fmtEur(p.eur)}</div>
+        ${p.area ? `<div class="pi-area">${fmt(p.area)} м²</div>` : ''}
+        ${p.custom ? `<button class="pi-remove" title="Премахни" onclick="event.stopPropagation();removeCustomParcel('${p.id}')">✕</button>` : ''}
       </div>`;
     item.addEventListener('click', () => {
       if (isMobile()) setDrawer('peek');
@@ -813,7 +942,7 @@ window.openKAIS = function(id) {
 };
 
 function findParcel(id) {
-  return parcels.find(x => x.id === id) || forSaleParcels.find(x => x.id === id);
+  return parcels.find(x => x.id === id) || forSaleParcels.find(x => x.id === id) || customParcels.find(x => x.id === id);
 }
 
 function makeSpecialPopup(p) {
@@ -826,10 +955,12 @@ function makeSpecialPopup(p) {
     <div class="popup-row"><span class="popup-label">Населено място</span><span class="popup-val">${p.loc}</span></div>
     <div class="popup-row"><span class="popup-label">Вид</span><span class="type-badge">${p.type}</span></div>
     <hr class="popup-divider">
+    ${p.area ? `<div class="popup-row"><span class="popup-label">Площ</span><span class="popup-val">${fmt(p.area)} м²</span></div>` : ''}
+    <hr class="popup-divider">
     <div class="popup-price" style="color:#c084fc">${fmtEur(p.eur)}</div>
-    <div class="popup-bgn">${fmtBgn(p.bgn)}</div>
+    <div class="popup-bgn">${fmtBgn(p.bgn)}${p.area ? ' · ' + Math.round(p.eur / (p.area / 1000)) + ' €/дка' : ''}</div>
     <div style="margin-top:10px;padding:8px 10px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:6px;font-size:11px;color:#c084fc">
-      Не е от общинския търг — намерен самостоятелно
+      ${p.note || 'Не е от общинския търг — намерен самостоятелно'}
     </div>
     <button class="popup-kais" onclick="openKAIS('${p.id}')" style="border-color:rgba(168,85,247,0.35);color:#c084fc;background:rgba(168,85,247,0.1);margin-top:8px">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -863,7 +994,7 @@ function selectParcel(id, flyTo) {
 }
 
 function normalStyle(p) {
-  if (p?.special) return { color: PURPLE, weight: 2, opacity: 0.9, fillColor: PURPLE, fillOpacity: 0.25, dashArray: '6 4' };
+  if (p?.special || p?.sale) return { color: PURPLE, weight: 2, opacity: 0.9, fillColor: PURPLE, fillOpacity: 0.25, dashArray: '6 4' };
   const col = priceColor(p.eur);
   return { color: col, weight: 1.5, opacity: 0.85, fillColor: col, fillOpacity: 0.28 };
 }
@@ -934,32 +1065,6 @@ async function loadAllGeometries() {
   if (allLayers.length > 0) map.fitBounds(L.featureGroup(allLayers).getBounds(), { padding: [20, 20] });
 }
 
-async function loadSpecialGeometries() {
-  const ids = forSaleParcels.map(p => p.id);
-  try {
-    const where = `nationalcadastralref IN (${ids.map(id => `'${id}'`).join(',')})`;
-    const params = new URLSearchParams({ where, outFields:'nationalcadastralref', returnGeometry:'true', outSR:'4326', f:'geojson' });
-    const res = await fetch(`${INSPIRE_URL}?${params}`);
-    if (!res.ok) return;
-    const geojson = await res.json();
-    if (geojson.features) {
-      for (const feat of geojson.features) {
-        const ref = feat.properties?.nationalcadastralref;
-        const p = ref && forSaleParcels.find(x => x.id === ref);
-        if (p && (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon')) {
-          const coords = feat.geometry.type === 'MultiPolygon' ? feat.geometry.coordinates[0] : feat.geometry.coordinates;
-          const latlngs = coords[0].map(([lng, lat]) => [lat, lng]);
-          const layer = L.polygon(latlngs, normalStyle(p));
-          layer.bindPopup(makeSpecialPopup(p), { maxWidth: 280 });
-          layer.on('click', () => selectParcel(p.id, false));
-          layer.addTo(map);
-          layerMap[p.id] = layer;
-          buildSidebar();
-        }
-      }
-    }
-  } catch(e) { console.warn('Special parcel fetch failed:', e); }
-}
 
 // ── FILTERS ──
 const muncs = [...new Set(parcels.map(p => p.loc))].sort();
@@ -1027,6 +1132,158 @@ syncFilters('priceFilterMobile',['priceFilter']);
   });
 });
 
+// ── CUSTOM PARCELS (localStorage) ──
+const STORAGE_KEY = 'blg_custom_parcels';
+let customParcels = [];
+
+function loadCustomParcels() {
+  try { customParcels = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { customParcels = []; }
+}
+
+function saveCustomParcelStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(customParcels));
+}
+
+function removeCustomParcel(id) {
+  customParcels = customParcels.filter(p => p.id !== id);
+  saveCustomParcelStorage();
+  const layer = layerMap[id];
+  if (layer) { layer.remove(); delete layerMap[id]; }
+  if (activeId === id) activeId = null;
+  buildSidebar();
+}
+
+async function loadCustomGeometries() {
+  const all = [...forSaleParcels, ...customParcels];
+  for (const p of all) {
+    if (layerMap[p.id]) continue;
+    try {
+      const where = `nationalcadastralref='${p.id}'`;
+      const params = new URLSearchParams({ where, outFields:'nationalcadastralref', returnGeometry:'true', outSR:'4326', f:'geojson' });
+      const res = await fetch(`${INSPIRE_URL}?${params}`);
+      if (!res.ok) continue;
+      const geojson = await res.json();
+      if (geojson.features?.length) {
+        const feat = geojson.features[0];
+        if (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon') {
+          const coords = feat.geometry.type === 'MultiPolygon' ? feat.geometry.coordinates[0] : feat.geometry.coordinates;
+          const latlngs = coords[0].map(([lng, lat]) => [lat, lng]);
+          const layer = L.polygon(latlngs, normalStyle(p));
+          const popup = (p.special || p.sale) ? makeSpecialPopup(p) : makePopup(p);
+          layer.bindPopup(popup, { maxWidth: 280 });
+          layer.on('click', () => selectParcel(p.id, false));
+          layer.addTo(map);
+          layerMap[p.id] = layer;
+          buildSidebar();
+        }
+      }
+    } catch(e) { console.warn('Geometry fetch failed for', p.id, e); }
+  }
+}
+
+// ── ADD MODAL ──
+let addType = 'sale';
+
+function openAddModal() {
+  document.getElementById('addOverlay').classList.add('open');
+  document.getElementById('addId').value = '';
+  document.getElementById('addLoc').value = '';
+  document.getElementById('addLocal').value = '';
+  document.getElementById('addType').value = '';
+  document.getElementById('addArea').value = '';
+  document.getElementById('addEur').value = '';
+  document.getElementById('addBgn').value = '';
+  document.getElementById('addNote').value = '';
+  document.getElementById('addError').textContent = '';
+  setAddType('sale');
+  setTimeout(() => document.getElementById('addId').focus(), 100);
+}
+
+function closeAddModal() {
+  document.getElementById('addOverlay').classList.remove('open');
+}
+
+function setAddType(type) {
+  addType = type;
+  document.getElementById('typeBtnSale').className = 'add-type-btn' + (type === 'sale' ? ' active-sale' : '');
+  document.getElementById('typeBtnAuction').className = 'add-type-btn' + (type === 'auction' ? ' active-auction' : '');
+}
+
+// Auto-calculate BGN from EUR
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('addEur')?.addEventListener('input', () => {
+    const eur = parseFloat(document.getElementById('addEur').value);
+    if (!isNaN(eur) && !document.getElementById('addBgn').value)
+      document.getElementById('addBgn').placeholder = Math.round(eur * 1.9558).toLocaleString('bg-BG') + ' (авт.)';
+  });
+});
+
+async function saveCustomParcel() {
+  const id     = document.getElementById('addId').value.trim();
+  const loc    = document.getElementById('addLoc').value.trim();
+  const local  = document.getElementById('addLocal').value.trim();
+  const type   = document.getElementById('addType').value.trim();
+  const area   = parseInt(document.getElementById('addArea').value) || 0;
+  const eur    = parseFloat(document.getElementById('addEur').value);
+  const bgnRaw = parseFloat(document.getElementById('addBgn').value);
+  const bgn    = isNaN(bgnRaw) ? Math.round(eur * 1.9558) : bgnRaw;
+  const note   = document.getElementById('addNote').value.trim();
+  const errEl  = document.getElementById('addError');
+
+  if (!id)            { errEl.textContent = 'Въведи кадастрален №'; return; }
+  if (!loc)           { errEl.textContent = 'Въведи населено място'; return; }
+  if (isNaN(eur) || eur <= 0) { errEl.textContent = 'Въведи валидна цена'; return; }
+  if ([...parcels, ...forSaleParcels, ...customParcels].find(p => p.id === id)) {
+    errEl.textContent = 'Имот с този № вече съществува'; return;
+  }
+  errEl.textContent = '';
+
+  const btn = document.getElementById('addSaveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Зареждане на геометрия…';
+
+  const p = { id, loc, local, type: type || 'имот', area, eur, bgn, note, sale: addType === 'sale', custom: true };
+  customParcels.push(p);
+  saveCustomParcelStorage();
+  closeAddModal();
+  buildSidebar();
+
+  // Fetch geometry
+  try {
+    const where = `nationalcadastralref='${id}'`;
+    const params = new URLSearchParams({ where, outFields:'nationalcadastralref', returnGeometry:'true', outSR:'4326', f:'geojson' });
+    const res = await fetch(`${INSPIRE_URL}?${params}`);
+    const geojson = res.ok ? await res.json() : null;
+    if (geojson?.features?.length) {
+      const feat = geojson.features[0];
+      if (feat.geometry?.type === 'Polygon' || feat.geometry?.type === 'MultiPolygon') {
+        const coords = feat.geometry.type === 'MultiPolygon' ? feat.geometry.coordinates[0] : feat.geometry.coordinates;
+        const latlngs = coords[0].map(([lng, lat]) => [lat, lng]);
+        const layer = L.polygon(latlngs, normalStyle(p));
+        const popup = p.sale ? makeSpecialPopup(p) : makePopup(p);
+        layer.bindPopup(popup, { maxWidth: 280 });
+        layer.on('click', () => selectParcel(p.id, false));
+        layer.addTo(map);
+        layerMap[p.id] = layer;
+        buildSidebar();
+        map.fitBounds(layer.getBounds(), { maxZoom: 17, padding: [40, 40] });
+      }
+    }
+  } catch(e) { console.warn('Geometry fetch failed', e); }
+
+  btn.disabled = false;
+  btn.textContent = 'Запази и добави на картата';
+}
+
+// Close overlay on backdrop click
+document.getElementById('addOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('addOverlay')) closeAddModal();
+});
+
+// Wire up buttons
+document.getElementById('addPlotBtn').addEventListener('click', openAddModal);
+document.getElementById('addPlotBtnDesktop').addEventListener('click', openAddModal);
+
 // ── USER INFO ──
 fetch('/.auth/me').then(r => r.json()).then(data => {
   const user = data?.clientPrincipal;
@@ -1038,11 +1295,12 @@ fetch('/.auth/me').then(r => r.json()).then(data => {
 }).catch(() => {});
 
 // ── INIT ──
+loadCustomParcels();
 updateStats();
 buildSidebar();
 setDrawer('peek', false);
 loadAllGeometries();
-loadSpecialGeometries();
+loadCustomGeometries();
 </script>
 </body>
 </html>
